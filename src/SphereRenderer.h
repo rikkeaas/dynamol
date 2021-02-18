@@ -20,6 +20,8 @@
 #include <globjects/NamedString.h>
 #include <globjects/base/StaticStringSource.h>
 
+#include "Simulator.h"
+
 namespace dynamol
 {
 	class Viewer;
@@ -31,8 +33,10 @@ namespace dynamol
 		virtual void display();
 
 	private:
+
+		std::unique_ptr<Simulator> simulator;
 		
-		std::vector< std::unique_ptr<globjects::Buffer> > m_vertices;
+		std::vector< globjects::Buffer* > m_vertices;
 		std::unique_ptr<globjects::VertexArray> m_vao = std::make_unique<globjects::VertexArray>();
 		std::unique_ptr<globjects::Buffer> m_elementColorsRadii = std::make_unique<globjects::Buffer>();
 		std::unique_ptr<globjects::Buffer> m_residueColors = std::make_unique<globjects::Buffer>();

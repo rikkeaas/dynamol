@@ -8,9 +8,13 @@ namespace dynamol
 	{
 	public:
 		Simulator(Viewer* viewer);
-		std::unique_ptr<globjects::Buffer> getVertices();
+		globjects::Buffer* getVertices();
+		void simulate();
+		bool checkTimeOut();
 	private:
 		globjects::Buffer* curr_vertices;
 		globjects::Buffer* prev_vertices;
+
+		float timeOut;
 	};
 }

@@ -9,7 +9,6 @@
 #include "Protein.h"
 #include <sstream>
 
-#include "Simulator.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -84,7 +83,7 @@ SphereRenderer::SphereRenderer(Viewer* viewer) : Renderer(viewer)
 		m_vertices.back()->setStorage(i, gl::GL_NONE_BIT);
 	}*/
 
-	std::unique_ptr<Simulator> simulator = std::make_unique<Simulator>(viewer);
+	simulator = std::make_unique<Simulator>(viewer);
 
 	m_vertices.push_back(simulator->getVertices());
 
@@ -358,6 +357,14 @@ void SphereRenderer::display()
 {
 	if (viewer()->scene()->protein()->atoms().size() == 0)
 		return;
+
+	if (simulator->checkTimeOut())
+	{
+		globjects::debug() << "Timeout works!";
+		simulator->simulate();
+		m_vertices.pop_back();
+		m_vertices.push_back(simulator->getVertices());
+	}
 
 	// SaveOpenGL state
 	auto currentState = State::currentState();
@@ -664,7 +671,7 @@ void SphereRenderer::display()
 	// Vertex binding setup
 	auto vertexBinding = m_vao->binding(0);
 	vertexBinding->setAttribute(0);
-	vertexBinding->setBuffer(m_vertices[currentTimestep].get(), 0, sizeof(vec4));
+	vertexBinding->setBuffer(m_vertices[currentTimestep], 0, sizeof(vec4));
 	vertexBinding->setFormat(4, GL_FLOAT);
 	m_vao->enable(0);
 
@@ -672,7 +679,7 @@ void SphereRenderer::display()
 	{
 		auto nextVertexBinding = m_vao->binding(1);
 		nextVertexBinding->setAttribute(1);
-		nextVertexBinding->setBuffer(m_vertices[nextTimestep].get(), 0, sizeof(vec4));
+		nextVertexBinding->setBuffer(m_vertices[nextTimestep], 0, sizeof(vec4));
 		nextVertexBinding->setFormat(4, GL_FLOAT);
 		m_vao->enable(1);
 	}
