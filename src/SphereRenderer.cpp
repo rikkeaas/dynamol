@@ -9,6 +9,8 @@
 #include "Protein.h"
 #include <sstream>
 
+#include "Simulator.h"
+
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -76,11 +78,15 @@ SphereRenderer::SphereRenderer(Viewer* viewer) : Renderer(viewer)
 {
 	Shader::hintIncludeImplementation(Shader::IncludeImplementation::Fallback);
 
-	for (auto i : viewer->scene()->protein()->atoms())
+	/*for (auto i : viewer->scene()->protein()->atoms())
 	{
 		m_vertices.push_back(Buffer::create());
 		m_vertices.back()->setStorage(i, gl::GL_NONE_BIT);
-	}
+	}*/
+
+	std::unique_ptr<Simulator> simulator = std::make_unique<Simulator>(viewer);
+
+	m_vertices.push_back(simulator->getVertices());
 
 	m_elementColorsRadii->setStorage(viewer->scene()->protein()->activeElementColorsRadiiPacked(), gl::GL_NONE_BIT);
 	m_residueColors->setStorage(viewer->scene()->protein()->activeResidueColorsPacked(), gl::GL_NONE_BIT);
