@@ -77,15 +77,7 @@ SphereRenderer::SphereRenderer(Viewer* viewer) : Renderer(viewer)
 {
 	Shader::hintIncludeImplementation(Shader::IncludeImplementation::Fallback);
 
-	/*for (auto i : viewer->scene()->protein()->atoms())
-	{
-		m_vertices.push_back(Buffer::create());
-		m_vertices.back()->setStorage(i, gl::GL_NONE_BIT);
-	}*/
-
 	simulator = std::make_unique<Simulator>(viewer);
-
-	m_vertices.push_back(simulator->getVertices());
 
 	m_elementColorsRadii->setStorage(viewer->scene()->protein()->activeElementColorsRadiiPacked(), gl::GL_NONE_BIT);
 	m_residueColors->setStorage(viewer->scene()->protein()->activeResidueColorsPacked(), gl::GL_NONE_BIT);
@@ -362,8 +354,6 @@ void SphereRenderer::display()
 	{
 		globjects::debug() << "Timeout works!";
 		simulator->simulate();
-		m_vertices.pop_back();
-		m_vertices.push_back(simulator->getVertices());
 	}
 
 	// SaveOpenGL state
@@ -629,7 +619,6 @@ void SphereRenderer::display()
 	const uint currentTimestep = uint(currentTime) % timestepCount;
 	const uint nextTimestep = (currentTimestep + 1) % timestepCount;
 	const float animationDelta = currentTime - floor(currentTime);
-	const int vertexCount = int(viewer()->scene()->protein()->atoms()[currentTimestep].size());
 
 	// Defines for enabling/disabling shader feature based on parameter setting
 	std::string defines = "";
@@ -667,24 +656,6 @@ void SphereRenderer::display()
 		m_shaderSourceDefines->setString(defines);
 		reloadShaders();
 	}
-
-	// Vertex binding setup
-	/*
-	auto vertexBinding = m_vao->binding(0);
-	vertexBinding->setAttribute(0);
-	vertexBinding->setBuffer(m_vertices[currentTimestep], 0, sizeof(vec4));
-	vertexBinding->setFormat(4, GL_FLOAT);
-	m_vao->enable(0);
-
-	if (timestepCount > 0)
-	{
-		auto nextVertexBinding = m_vao->binding(1);
-		nextVertexBinding->setAttribute(1);
-		nextVertexBinding->setBuffer(m_vertices[nextTimestep], 0, sizeof(vec4));
-		nextVertexBinding->setFormat(4, GL_FLOAT);
-		m_vao->enable(1);
-	}
-	*/
 
 	//////////////////////////////////////////////////////////////////////////
 	// Shadow rendering pass
@@ -754,12 +725,9 @@ void SphereRenderer::display()
 	programSphere->setUniform("animationAmplitude", animationAmplitude);
 	programSphere->setUniform("animationFrequency", animationFrequency);
 
-	//m_vao->bind();
 	programSphere->use();
 	simulator->draw();
-	//m_vao->drawArrays(GL_POINTS, 0, vertexCount);
 	programSphere->release();
-	//m_vao->unbind();
 
 	//////////////////////////////////////////////////////////////////////////
 	// List generation pass
@@ -794,13 +762,9 @@ void SphereRenderer::display()
 	programSpawn->setUniform("animationAmplitude", animationAmplitude);
 	programSpawn->setUniform("animationFrequency", animationFrequency);
 
-	//m_vao->bind();
 	programSpawn->use();
 	simulator->draw();
-	//m_vao->drawArrays(GL_POINTS, 0, vertexCount);
 	programSpawn->release();
-	//_vao->unbind();
-
 
 	m_spherePositionTexture->unbindActive(0);
 	m_intersectionBuffer->unbind(GL_SHADER_STORAGE_BUFFER);
