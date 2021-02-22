@@ -14,26 +14,29 @@ Simulator::Simulator(Viewer* viewer)
 	{
 		globjects::debug() << "Disregarding animation for simulation purposes...";
 	}
-	curr_vertices = new Buffer();
-	curr_vertices->setStorage(timesteps[0], gl::GL_NONE_BIT);
+	vertices.push_back(Buffer::create());
+	vertices.back()->setStorage(timesteps[0], gl::GL_NONE_BIT);
 
 	auto change = timesteps[0];
 	for (int i = 0; i < change.size(); i++)
 	{
-		change[i] = glm::vec4(change[i].x*1.5, change[i].y*1.5f, change[i].z*1.5f, change[i].w);
+		change[i] = glm::vec4(change[i].x + (change[i].x < 400 ? -20 : 20), change[i].y, change[i].z, change[i].w);
 	}
 
 
-	prev_vertices = new Buffer();
-	prev_vertices->setStorage(change, gl::GL_NONE_BIT);
+	vertices.push_back(Buffer::create());
+	vertices.back()->setStorage(change, gl::GL_NONE_BIT);
 
-	timeOut = glfwGetTime() + 10;
+	v_vertices = timesteps[0];
+
+	timeOut = glfwGetTime() + 6;
+
 }
 
 bool Simulator::checkTimeOut() {
 	double time = glfwGetTime();
 	if (timeOut < time) {
-		timeOut = time + 10;
+		timeOut = time + 6;
 		return true;
 	}
 	return false;
@@ -42,17 +45,26 @@ bool Simulator::checkTimeOut() {
 
 void Simulator::simulate()
 {
-	// Letting the current vertices become the previous ones (by changing the pointers, not moving the memory)
-	globjects::Buffer* tempPointer = curr_vertices;
-	curr_vertices = prev_vertices;
-	prev_vertices = tempPointer;
-
-
+	activeBuffer = (activeBuffer + 1) % 2;
+	// Do simulation step based on prev_vertices and store in curr vertices
+	//doStep();
 }
 
+void Simulator::doStep()
+{
+	for (int i = 0; i < v_vertices.size(); i++)
+	{
+		v_vertices[i] = glm::vec4(v_vertices[i].x + (v_vertices[i].x < 400 ? -20 : 20), v_vertices[i].y, v_vertices[i].z, v_vertices[i].w);
+	}
+	//curr_vertices->detach();
+	//curr_vertices = new Buffer();
+	vertices.at(activeBuffer)->setData(v_vertices, (gl::GLenum) 0);
+	
+}
 
 
 globjects::Buffer* Simulator::getVertices()
 {
-	 return curr_vertices; // Creating a unique pointer of the buffer since this is what sphereRenderer expects
+	return vertices.at(activeBuffer).get();
+	//return curr_vertices;
 }
