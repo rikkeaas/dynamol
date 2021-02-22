@@ -669,6 +669,7 @@ void SphereRenderer::display()
 	}
 
 	// Vertex binding setup
+	/*
 	auto vertexBinding = m_vao->binding(0);
 	vertexBinding->setAttribute(0);
 	vertexBinding->setBuffer(m_vertices[currentTimestep], 0, sizeof(vec4));
@@ -683,6 +684,7 @@ void SphereRenderer::display()
 		nextVertexBinding->setFormat(4, GL_FLOAT);
 		m_vao->enable(1);
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////
 	// Shadow rendering pass
@@ -752,11 +754,12 @@ void SphereRenderer::display()
 	programSphere->setUniform("animationAmplitude", animationAmplitude);
 	programSphere->setUniform("animationFrequency", animationFrequency);
 
-	m_vao->bind();
+	//m_vao->bind();
 	programSphere->use();
-	m_vao->drawArrays(GL_POINTS, 0, vertexCount);
+	simulator->draw();
+	//m_vao->drawArrays(GL_POINTS, 0, vertexCount);
 	programSphere->release();
-	m_vao->unbind();
+	//m_vao->unbind();
 
 	//////////////////////////////////////////////////////////////////////////
 	// List generation pass
@@ -791,11 +794,12 @@ void SphereRenderer::display()
 	programSpawn->setUniform("animationAmplitude", animationAmplitude);
 	programSpawn->setUniform("animationFrequency", animationFrequency);
 
-	m_vao->bind();
+	//m_vao->bind();
 	programSpawn->use();
-	m_vao->drawArrays(GL_POINTS, 0, vertexCount);
+	simulator->draw();
+	//m_vao->drawArrays(GL_POINTS, 0, vertexCount);
 	programSpawn->release();
-	m_vao->unbind();
+	//_vao->unbind();
 
 
 	m_spherePositionTexture->unbindActive(0);

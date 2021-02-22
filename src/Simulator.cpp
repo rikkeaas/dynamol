@@ -9,6 +9,7 @@ using namespace globjects;
 
 Simulator::Simulator(Viewer* viewer)
 {
+
 	auto timesteps = viewer->scene()->protein()->atoms();
 	if (timesteps.size() > 1) 
 	{
@@ -28,6 +29,8 @@ Simulator::Simulator(Viewer* viewer)
 	vertices.back()->setStorage(change, gl::GL_NONE_BIT);
 
 	v_vertices = timesteps[0];
+	vertexCount = int(timesteps[0].size());
+
 
 	timeOut = glfwGetTime() + 6;
 
@@ -46,8 +49,8 @@ bool Simulator::checkTimeOut() {
 void Simulator::simulate()
 {
 	activeBuffer = (activeBuffer + 1) % 2;
-	// Do simulation step based on prev_vertices and store in curr vertices
-	//doStep();
+	
+
 }
 
 void Simulator::doStep()
@@ -67,4 +70,17 @@ globjects::Buffer* Simulator::getVertices()
 {
 	return vertices.at(activeBuffer).get();
 	//return curr_vertices;
+}
+
+void Simulator::draw()
+{
+	auto vertexBinding = m_vao->binding(0);
+	vertexBinding->setAttribute(0);
+	vertexBinding->setBuffer(getVertices(), 0, sizeof(vec4));
+	vertexBinding->setFormat(4, GL_FLOAT);
+	m_vao->enable(0);
+
+	m_vao->bind();
+	m_vao->drawArrays(GL_POINTS, 0, vertexCount);
+	m_vao->unbind();
 }
