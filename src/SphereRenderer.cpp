@@ -725,6 +725,8 @@ void SphereRenderer::display()
 	programSphere->setUniform("animationAmplitude", animationAmplitude);
 	programSphere->setUniform("animationFrequency", animationFrequency);
 
+
+	//globjects::debug() << "**********" << programSphere->isLinked();
 	programSphere->use();
 	simulator->draw();
 	programSphere->release();

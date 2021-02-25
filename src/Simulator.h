@@ -3,6 +3,8 @@
 
 #include <globjects/VertexArray.h>
 #include <globjects/VertexAttributeBinding.h>
+#include <globjects/Program.h>
+#include <globjects/Shader.h>
 
 namespace dynamol
 {
@@ -22,6 +24,8 @@ namespace dynamol
 	private:
 		std::vector<std::unique_ptr<globjects::Buffer>> vertices;
 		int activeBuffer = 0;
+
+		std::unique_ptr<globjects::Program> computeShader = std::make_unique<globjects::Program>();
 
 		std::unique_ptr<globjects::VertexArray> m_vao = std::make_unique<globjects::VertexArray>();
 		int vertexCount;

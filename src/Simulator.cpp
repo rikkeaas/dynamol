@@ -1,6 +1,7 @@
 #include "Simulator.h"
 #include "Viewer.h"
 #include "Protein.h"
+#include <globjects/State.h>
 
 using namespace dynamol;
 using namespace gl;
@@ -32,6 +33,16 @@ Simulator::Simulator(Viewer* viewer)
 	vertexCount = int(timesteps[0].size());
 
 
+	auto file = Shader::sourceFromFile("./res/simulator/simulator-cs.glsl");
+	auto source = Shader::applyGlobalReplacements(file.get());
+	auto shader = globjects::Shader::create(GL_COMPUTE_SHADER, source.get());
+	
+	globjects::debug() << "AAAAAAAALoading shader file " << source.get() << " ...";
+
+	computeShader->attach(shader.get());
+
+	globjects::debug() << "!!!!!!!!!!!!!!!!" << computeShader->isLinked();
+
 	timeOut = glfwGetTime() + 6;
 
 }
@@ -48,21 +59,31 @@ bool Simulator::checkTimeOut() {
 
 void Simulator::simulate()
 {
-	activeBuffer = (activeBuffer + 1) % 2;
-	
+	auto currentState = State::currentState();
 
+	activeBuffer = (activeBuffer + 1) % 2;
+	doStep();
+
+	currentState->apply();
 }
 
 void Simulator::doStep()
 {
-	for (int i = 0; i < v_vertices.size(); i++)
-	{
-		v_vertices[i] = glm::vec4(v_vertices[i].x + (v_vertices[i].x < 400 ? -20 : 20), v_vertices[i].y, v_vertices[i].z, v_vertices[i].w);
-	}
-	//curr_vertices->detach();
-	//curr_vertices = new Buffer();
-	vertices.at(activeBuffer)->setData(v_vertices, (gl::GLenum) 0);
-	
+	//Set uniforms
+
+	//Set shaderprogram to use
+
+	//computeShader->link();
+
+	computeShader->use();
+	computeShader->dispatchCompute(vertexCount, 0, 0);
+	globjects::debug() << "!!!!!!!!!!!!!!!!" << computeShader->isLinked();
+	// Bind buffers
+	globjects::debug() << "Compute shader?";
+
+
+
+	computeShader->release(); 
 }
 
 
