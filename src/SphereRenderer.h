@@ -31,10 +31,11 @@ namespace dynamol
 	public:
 		SphereRenderer(Viewer *viewer);
 		virtual void display();
+		virtual void reloadShaders();
 
 	private:
 
-		std::unique_ptr<Simulator> simulator;
+		std::unique_ptr<Simulator> m_simulator;
 		
 		std::unique_ptr<globjects::Buffer> m_elementColorsRadii = std::make_unique<globjects::Buffer>();
 		std::unique_ptr<globjects::Buffer> m_residueColors = std::make_unique<globjects::Buffer>();

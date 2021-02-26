@@ -8,8 +8,14 @@ using namespace gl;
 using namespace glm;
 using namespace globjects;
 
-Simulator::Simulator(Viewer* viewer)
+Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 {
+	m_verticesQuad->setStorage(std::array<vec3, 1>({ vec3(0.0f, 0.0f, 0.0f) }), gl::GL_NONE_BIT);
+	auto vertexBindingQuad = m_vaoQuad->binding(0);
+	vertexBindingQuad->setBuffer(m_verticesQuad.get(), 0, sizeof(vec3));
+	vertexBindingQuad->setFormat(3, GL_FLOAT);
+	m_vaoQuad->enable(0);
+	m_vaoQuad->unbind();
 
 	auto timesteps = viewer->scene()->protein()->atoms();
 	if (timesteps.size() > 1) 
@@ -33,19 +39,28 @@ Simulator::Simulator(Viewer* viewer)
 	vertexCount = int(timesteps[0].size());
 
 
-	auto file = Shader::sourceFromFile("./res/simulator/simulator-cs.glsl");
-	auto source = Shader::applyGlobalReplacements(file.get());
-	auto shader = globjects::Shader::create(GL_COMPUTE_SHADER, source.get());
-	
-	//shader->compile();
-	globjects::debug() << "AAAAAAAALoading shader file " << source.get() << " ...";
+	createShaderProgram("debug", {
+			{ GL_VERTEX_SHADER,"./res/sphere/image-vs.glsl" },
+			{ GL_GEOMETRY_SHADER,"./res/sphere/image-gs.glsl" },
+			{ GL_FRAGMENT_SHADER,"./res/simulator/debug-fs.glsl" },
+		});
 
-	computeShader->attach(shader.get());
-	computeShader->link();
-	//computeShader->create();
-	globjects::debug() << "!!!!!!!!!!!!!!!!" << computeShader->isLinked();
+
+	createShaderProgram("simulate", {
+			{ GL_COMPUTE_SHADER,"./res/simulator/simulator-cs.glsl" }
+		});
 
 	timeOut = glfwGetTime() + 6;
+
+	std::vector<unsigned char> filler(512 * 512 * 4, 255);
+
+	m_colorTexture = Texture::create(GL_TEXTURE_2D);
+	m_colorTexture->setParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	m_colorTexture->setParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	m_colorTexture->setParameter(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	m_colorTexture->setParameter(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	m_colorTexture->image2D(0, GL_RGBA32F, 512,512, 0, GL_RGBA, GL_UNSIGNED_BYTE, &filler.front());
+	m_colorTexture->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
 }
 
@@ -79,16 +94,26 @@ void Simulator::doStep()
 
 	//computeShader->use();
 	
-	computeShader->dispatchCompute((GLuint)10, (GLuint)10, (GLuint)1);
-	globjects::debug() << "!!!" << computeShader->isLinked();
+	auto simulateProgram = shaderProgram("simulate");
+	//simulateProgram->use();
+
+	double time = glfwGetTime();
+	simulateProgram->setUniform("roll", float(time));
+	simulateProgram->setUniform("destTex", 1);
+
+	simulateProgram->dispatchCompute(512 / 16, 512 / 16, 1);
+	globjects::debug() << "!!!" << simulateProgram->isLinked();
 	
+
+	simulateProgram->release();
 	// Bind buffers
 
 	globjects::debug() << "Compute shader?";
 
 	//computeShader->release(); 
 
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
 }
 
 
@@ -97,7 +122,25 @@ globjects::Buffer* Simulator::getVertices()
 	return vertices.at(activeBuffer).get();
 }
 
-void Simulator::draw()
+void Simulator::debug()
+{
+	auto debugProgram = shaderProgram("debug");
+
+	m_colorTexture->bindActive(0);
+	m_vaoQuad->bind();
+
+	debugProgram->setUniform("colorTexture", 0);
+	debugProgram->use();
+	
+	m_vaoQuad->drawArrays(GL_POINTS, 0, 1);
+	debugProgram->release();
+
+	m_vaoQuad->unbind();
+	m_colorTexture->unbindActive(0);
+
+}
+
+void Simulator::display()
 {
 	auto vertexBinding = m_vao->binding(0);
 	vertexBinding->setAttribute(0);

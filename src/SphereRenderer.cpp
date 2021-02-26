@@ -77,7 +77,7 @@ SphereRenderer::SphereRenderer(Viewer* viewer) : Renderer(viewer)
 {
 	Shader::hintIncludeImplementation(Shader::IncludeImplementation::Fallback);
 
-	simulator = std::make_unique<Simulator>(viewer);
+	m_simulator = std::make_unique<Simulator>(viewer);
 
 	m_elementColorsRadii->setStorage(viewer->scene()->protein()->activeElementColorsRadiiPacked(), gl::GL_NONE_BIT);
 	m_residueColors->setStorage(viewer->scene()->protein()->activeResidueColorsPacked(), gl::GL_NONE_BIT);
@@ -345,15 +345,21 @@ SphereRenderer::SphereRenderer(Viewer* viewer) : Renderer(viewer)
 	
 }
 
+void SphereRenderer::reloadShaders()
+{
+	m_simulator->reloadShaders();
+	Renderer::reloadShaders();
+}
+
 void SphereRenderer::display()
 {
 	if (viewer()->scene()->protein()->atoms().size() == 0)
 		return;
 
-	if (simulator->checkTimeOut())
+	if (m_simulator->checkTimeOut())
 	{
 		globjects::debug() << "Timeout works!";
-		simulator->simulate();
+		m_simulator->simulate();
 	}
 
 	// SaveOpenGL state
@@ -728,7 +734,7 @@ void SphereRenderer::display()
 
 	//globjects::debug() << "**********" << programSphere->isLinked();
 	programSphere->use();
-	simulator->draw();
+	m_simulator->display();
 	programSphere->release();
 
 	//////////////////////////////////////////////////////////////////////////
@@ -765,7 +771,7 @@ void SphereRenderer::display()
 	programSpawn->setUniform("animationFrequency", animationFrequency);
 
 	programSpawn->use();
-	simulator->draw();
+	m_simulator->display();
 	programSpawn->release();
 
 	m_spherePositionTexture->unbindActive(0);
@@ -1103,6 +1109,8 @@ void SphereRenderer::display()
 		m_colorTexture->unbindActive(0);
 
 	}
+
+	m_simulator->debug();
 
 	// Restore OpenGL state
 	currentState->apply();
