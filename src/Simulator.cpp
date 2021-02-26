@@ -37,10 +37,12 @@ Simulator::Simulator(Viewer* viewer)
 	auto source = Shader::applyGlobalReplacements(file.get());
 	auto shader = globjects::Shader::create(GL_COMPUTE_SHADER, source.get());
 	
+	//shader->compile();
 	globjects::debug() << "AAAAAAAALoading shader file " << source.get() << " ...";
 
 	computeShader->attach(shader.get());
-
+	computeShader->link();
+	//computeShader->create();
 	globjects::debug() << "!!!!!!!!!!!!!!!!" << computeShader->isLinked();
 
 	timeOut = glfwGetTime() + 6;
@@ -75,22 +77,24 @@ void Simulator::doStep()
 
 	//computeShader->link();
 
-	computeShader->use();
-	computeShader->dispatchCompute(vertexCount, 0, 0);
-	globjects::debug() << "!!!!!!!!!!!!!!!!" << computeShader->isLinked();
+	//computeShader->use();
+	
+	computeShader->dispatchCompute((GLuint)10, (GLuint)10, (GLuint)1);
+	globjects::debug() << "!!!" << computeShader->isLinked();
+	
 	// Bind buffers
+
 	globjects::debug() << "Compute shader?";
 
+	//computeShader->release(); 
 
-
-	computeShader->release(); 
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 
 globjects::Buffer* Simulator::getVertices()
 {
 	return vertices.at(activeBuffer).get();
-	//return curr_vertices;
 }
 
 void Simulator::draw()
