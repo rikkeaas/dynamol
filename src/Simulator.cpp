@@ -18,22 +18,24 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	m_vaoQuad->unbind();
 
 	auto timesteps = viewer->scene()->protein()->atoms();
-	if (timesteps.size() > 1) 
+	if (timesteps.size() > 1)
 	{
 		globjects::debug() << "Disregarding animation for simulation purposes...";
 	}
 	vertices.push_back(Buffer::create());
-	vertices.back()->setStorage(timesteps[0], gl::GL_NONE_BIT);
+	auto l = (sizeof(glm::vec4) * timesteps[0].size());
+	vertices.back()->setData(timesteps[0], GL_STATIC_DRAW);
 
 	auto change = timesteps[0];
 	for (int i = 0; i < change.size(); i++)
 	{
-		change[i] = glm::vec4(change[i].x + (change[i].x < 400 ? -20 : 20), change[i].y, change[i].z, change[i].w);
+		change[i] = glm::vec4(change[i].x + (change[i].x < 400 ? -20 : 20), change[i].y + 5, change[i].z + 10, change[i].w);
+		//change[i] = glm::vec4(0.0, 0.0, 0.0, 0.0);
 	}
 
 
 	vertices.push_back(Buffer::create());
-	vertices.back()->setStorage(change, gl::GL_NONE_BIT);
+	vertices.back()->setData(change, GL_STATIC_DRAW);
 
 	v_vertices = timesteps[0];
 	vertexCount = int(timesteps[0].size());
@@ -50,7 +52,7 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 			{ GL_COMPUTE_SHADER,"./res/simulator/simulator-cs.glsl" }
 		});
 
-	timeOut = glfwGetTime() + 6;
+	timeOut = glfwGetTime() + 3;
 
 	std::vector<unsigned char> filler(512 * 512 * 4, 255);
 
@@ -67,7 +69,7 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 bool Simulator::checkTimeOut() {
 	double time = glfwGetTime();
 	if (timeOut < time) {
-		timeOut = time + 6;
+		timeOut = time + 3;
 		return true;
 	}
 	return false;
@@ -93,20 +95,22 @@ void Simulator::doStep()
 	//computeShader->link();
 
 	//computeShader->use();
+
 	
 	auto simulateProgram = shaderProgram("simulate");
 	//simulateProgram->use();
+	vertices.at(activeBuffer)->bindBase(GL_SHADER_STORAGE_BUFFER,8);
+	vertices.at((activeBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 9);
 
-	double time = glfwGetTime();
-	simulateProgram->setUniform("roll", float(time));
-	simulateProgram->setUniform("destTex", 1);
+	//double time = glfwGetTime();
+	//simulateProgram->setUniform("roll", float(time));
+	//simulateProgram->setUniform("destTex", 1);
 
 	simulateProgram->dispatchCompute(512 / 16, 512 / 16, 1);
 	globjects::debug() << "!!!" << simulateProgram->isLinked();
 	
 
 	simulateProgram->release();
-	// Bind buffers
 
 	globjects::debug() << "Compute shader?";
 
@@ -114,6 +118,9 @@ void Simulator::doStep()
 
 	//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 	glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
+
+	vertices.at(activeBuffer)->unbind(GL_SHADER_STORAGE_BUFFER);
+	vertices.at((activeBuffer + 1) % 2)->unbind(GL_SHADER_STORAGE_BUFFER);
 }
 
 

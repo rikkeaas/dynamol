@@ -1110,7 +1110,7 @@ void SphereRenderer::display()
 
 	}
 
-	m_simulator->debug();
+	//m_simulator->debug();
 
 	// Restore OpenGL state
 	currentState->apply();
