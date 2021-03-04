@@ -356,11 +356,11 @@ void SphereRenderer::display()
 	if (viewer()->scene()->protein()->atoms().size() == 0)
 		return;
 
-	if (m_simulator->checkTimeOut())
-	{
-		globjects::debug() << "Timeout works!";
-		m_simulator->simulate();
-	}
+	//if (m_simulator->checkTimeOut())
+	//{
+	//globjects::debug() << "Timeout works!";
+	m_simulator->simulate();
+	//}
 
 	// SaveOpenGL state
 	auto currentState = State::currentState();

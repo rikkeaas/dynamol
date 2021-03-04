@@ -31,14 +31,17 @@ namespace dynamol
 		std::unique_ptr<globjects::VertexArray> m_vaoQuad = std::make_unique<globjects::VertexArray>();
 		std::unique_ptr<globjects::Buffer> m_verticesQuad = std::make_unique<globjects::Buffer>();
 
-		std::vector<std::unique_ptr<globjects::Buffer>> vertices;
-		int activeBuffer = 0;
+		std::vector<std::unique_ptr<globjects::Buffer>> m_vertices;
+		int m_activeBuffer = 0;
+
+		std::unique_ptr<globjects::Buffer> m_randomness;
+		std::unique_ptr<globjects::Buffer> m_shouldUseZ;
 
 		std::unique_ptr<globjects::VertexArray> m_vao = std::make_unique<globjects::VertexArray>();
-		int vertexCount;
+		float m_vertexCount;
 
-		std::vector<glm::vec4> v_vertices;
-		float timeOut;
+		float m_timeOut;
+		float m_timeStep;
 
 		std::unique_ptr<globjects::Texture> m_colorTexture = nullptr;
 	};

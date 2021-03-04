@@ -1,15 +1,55 @@
 #version 450
 uniform float roll;
 uniform writeonly image2D destTex;
+uniform float timeStep;
 
-layout (local_size_x = 16, local_size_y = 16) in;
+layout (local_size_x = 1) in;
 
 layout (std430, binding=8) buffer atoms {vec4 a[];};
 layout (std430, binding=9) buffer prevAtoms {vec4 b[];};
+layout (std430, binding=10) buffer randomness {float r[];};
+layout (std430, binding=11) buffer axis {float axisBool[];};
 
 void main() 
 {
-	a[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].x += 10;
+	float time = mod(r[gl_GlobalInvocationID.x/4] + timeStep, 500.0);
+	//if (gl_GlobalInvocationID.x % 2 == 0)
+	float rad = r[gl_GlobalInvocationID.x/4];
+
+	if (axisBool[gl_GlobalInvocationID.x/4] < 1.0)
+	{
+		a[gl_GlobalInvocationID.x].x = b[gl_GlobalInvocationID.x].x + rad*cos(3.14*time/5.0);
+		a[gl_GlobalInvocationID.x].z = b[gl_GlobalInvocationID.x].z + rad*sin(3.14*time/5.0);
+	}
+	else if (axisBool[gl_GlobalInvocationID.x/4] < 2.0)
+	{
+		a[gl_GlobalInvocationID.x].x = b[gl_GlobalInvocationID.x].x + rad*cos(3.14*time/5.0);
+		a[gl_GlobalInvocationID.x].y = b[gl_GlobalInvocationID.x].y + rad*sin(3.14*time/5.0);
+	}
+	else
+	{
+		a[gl_GlobalInvocationID.x].z = b[gl_GlobalInvocationID.x].z + rad*cos(3.14*time/5.0);
+		a[gl_GlobalInvocationID.x].y = b[gl_GlobalInvocationID.x].y + rad*sin(3.14*time/5.0);
+	}
+	
+	/*
+	float time = mod(r[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512] + timeStep, 10.0);
+	//if (gl_GlobalInvocationID.x % 2 == 0)
+	float rad = r[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512];
+	
+	a[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].x = b[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].x + rad*cos(3.14*time/5.0);
+	a[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].z = b[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].z + rad*sin(3.14*time/5.0);
+	
+	//else
+	//{
+		//a[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].x = b[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].x + 1*cos(3.14*time/5.0);
+		//a[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].y = b[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512].y + 1*sin(3.14*time/5.0);
+	//}
+	// Sende inn tid som uniform
+	// Bruke en buffer som center point
+	// Skrive til andre buffer slik at posisjonen endrer seg i en sirkel rundt center point.
+
+
 	//ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
 
 	/*
