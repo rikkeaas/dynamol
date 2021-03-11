@@ -36,7 +36,7 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	srand((unsigned int)time(NULL));
 	for (float i = 0; i < m_vertexCount; i++)
 	{
-		randomOffsets.push_back(0.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 10.0)));
+		randomOffsets.push_back(1.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 10.0)));
 		randomBools.push_back(static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 3.0)));
 	}
 
@@ -109,10 +109,8 @@ void Simulator::doStep()
 	}
 	else
 	{
-		m_timeStep += 1.0;
+		m_timeStep += 0.1;
 	}
-	//globjects::debug() << m_timeStep;
-
 
 	//simulateProgram->setUniform("roll", float(time));
 	//simulateProgram->setUniform("destTex", 1);

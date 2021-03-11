@@ -5,6 +5,15 @@ uniform float timeStep;
 
 layout (local_size_x = 1) in;
 
+struct Item
+{
+  float offset;
+  float rand;
+  float unused1;
+  float unused;
+};
+
+
 layout (std430, binding=8) buffer atoms {vec4 a[];};
 layout (std430, binding=9) buffer prevAtoms {vec4 b[];};
 layout (std430, binding=10) buffer randomness {float r[];};
@@ -32,6 +41,8 @@ void main()
 		a[gl_GlobalInvocationID.x].y = b[gl_GlobalInvocationID.x].y + rad*sin(3.14*time/5.0);
 	}
 	
+	
+
 	/*
 	float time = mod(r[gl_GlobalInvocationID.x + gl_GlobalInvocationID.y*512] + timeStep, 10.0);
 	//if (gl_GlobalInvocationID.x % 2 == 0)
