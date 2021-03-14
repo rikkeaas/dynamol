@@ -1,6 +1,6 @@
 #version 450
-uniform float roll;
-uniform writeonly image2D destTex;
+//uniform float roll;
+//uniform writeonly image2D destTex;
 uniform float timeStep;
 
 layout (local_size_x = 1) in;
@@ -16,11 +16,17 @@ struct Item
 
 layout (std430, binding=8) buffer atoms {vec4 a[];};
 layout (std430, binding=9) buffer prevAtoms {vec4 b[];};
-layout (std430, binding=10) buffer randomness {float r[];};
-layout (std430, binding=11) buffer axis {float axisBool[];};
+//layout (std430, binding=10) buffer randomness {float r[];};
+//layout (std430, binding=11) buffer axis {float axisBool[];};
+layout (std430, binding=12) buffer velocities {vec4 v[];};
 
 void main() 
 {
+	uint idx = gl_GlobalInvocationID.x;
+
+	a[idx] = b[idx] + v[idx];
+
+	/*
 	float time = mod(r[gl_GlobalInvocationID.x/4] + timeStep, 500.0);
 	//if (gl_GlobalInvocationID.x % 2 == 0)
 	float rad = r[gl_GlobalInvocationID.x/4];

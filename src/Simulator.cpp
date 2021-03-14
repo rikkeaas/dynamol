@@ -3,6 +3,8 @@
 #include "Protein.h"
 #include <globjects/State.h>
 
+#include <imgui.h>
+
 using namespace dynamol;
 using namespace gl;
 using namespace glm;
@@ -10,6 +12,9 @@ using namespace globjects;
 
 Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 {
+	m_viewer = viewer;
+	m_explosion = new Explosion(viewer);
+
 	m_verticesQuad->setStorage(std::array<vec3, 1>({ vec3(0.0f, 0.0f, 0.0f) }), gl::GL_NONE_BIT);
 	auto vertexBindingQuad = m_vaoQuad->binding(0);
 	vertexBindingQuad->setBuffer(m_verticesQuad.get(), 0, sizeof(vec3));
@@ -87,7 +92,7 @@ void Simulator::simulate()
 {
 	auto currentState = State::currentState();
 
-	//activeBuffer = (activeBuffer + 1) % 2;
+	m_activeBuffer = (m_activeBuffer + 1) % 2;
 	doStep();
 
 	currentState->apply();
@@ -95,44 +100,55 @@ void Simulator::simulate()
 
 void Simulator::doStep()
 {
-	
-	auto simulateProgram = shaderProgram("simulate");
-
-	m_vertices.at(m_activeBuffer)->bindBase(GL_SHADER_STORAGE_BUFFER,8);
-	m_vertices.at((m_activeBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 9);
-	m_randomness->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
-	m_shouldUseZ->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
-
-	if (m_timeStep >= 500.0)
+	m_explosion->display();
+	if (ImGui::BeginMenu("Simulator"))
 	{
-		m_timeStep = 0.0;
+		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
+
+		if (ImGui::Button("Reset atom positions"))
+		{
+			auto timesteps = m_viewer->scene()->protein()->atoms();
+			for (int i = 0; i < m_vertices.size(); i++)
+			{
+				m_vertices[i]->setData(timesteps[0], GL_STREAM_DRAW);
+			}
+		}
+		ImGui::EndMenu();
 	}
-	else
+
+	if (dummyAnimation)
 	{
-		m_timeStep += 0.1;
+		auto simulateProgram = shaderProgram("simulate");
+
+		m_vertices.at(m_activeBuffer)->bindBase(GL_SHADER_STORAGE_BUFFER, 8);
+		m_vertices.at((m_activeBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 9);
+		m_randomness->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
+		m_shouldUseZ->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
+		m_explosion->bindVelocity();
+
+		if (m_timeStep >= 500.0)
+		{
+			m_timeStep = 0.0;
+		}
+		else
+		{
+			m_timeStep += 0.1;
+		}
+
+		simulateProgram->setUniform("timeStep", m_timeStep);
+
+		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
+		simulateProgram->release();
+
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+		//glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
+
+		m_explosion->releaseVelocity();
+		m_shouldUseZ->unbind(GL_SHADER_STORAGE_BUFFER);
+		m_randomness->unbind(GL_SHADER_STORAGE_BUFFER);
+		m_vertices.at(m_activeBuffer)->unbind(GL_SHADER_STORAGE_BUFFER);
+		m_vertices.at((m_activeBuffer + 1) % 2)->unbind(GL_SHADER_STORAGE_BUFFER);
 	}
-
-	//simulateProgram->setUniform("roll", float(time));
-	//simulateProgram->setUniform("destTex", 1);
-	simulateProgram->setUniform("timeStep", m_timeStep);
-
-	simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
-	//globjects::debug() << "!!!" << simulateProgram->isLinked();
-	
-
-	simulateProgram->release();
-
-	//globjects::debug() << "Compute shader?";
-
-	//computeShader->release(); 
-
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-	//glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
-
-	m_shouldUseZ->unbind(GL_SHADER_STORAGE_BUFFER);
-	m_randomness->unbind(GL_SHADER_STORAGE_BUFFER);
-	m_vertices.at(m_activeBuffer)->unbind(GL_SHADER_STORAGE_BUFFER);
-	m_vertices.at((m_activeBuffer + 1) % 2)->unbind(GL_SHADER_STORAGE_BUFFER);
 }
 
 

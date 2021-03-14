@@ -7,6 +7,7 @@
 #include <globjects/Shader.h>
 
 #include "Renderer.h"
+#include "Explosion.h"
 
 namespace dynamol
 {
@@ -18,7 +19,7 @@ namespace dynamol
 		Simulator(Viewer* viewer);
 		globjects::Buffer* getVertices();
 
-		void Simulator::doStep();
+		void doStep();
 		void simulate();
 		bool checkTimeOut();
 
@@ -27,6 +28,9 @@ namespace dynamol
 		
 
 	private:
+		Viewer* m_viewer;
+		bool dummyAnimation = false;
+		Explosion* m_explosion;
 
 		std::unique_ptr<globjects::VertexArray> m_vaoQuad = std::make_unique<globjects::VertexArray>();
 		std::unique_ptr<globjects::Buffer> m_verticesQuad = std::make_unique<globjects::Buffer>();
