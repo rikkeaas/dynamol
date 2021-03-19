@@ -40,6 +40,8 @@ void Explosion::display()
 			ImGui::SliderFloat("Explosion center x: ", &m_x, m_minBounds.x, m_maxBounds.x);
 			ImGui::SliderFloat("Explosion center y: ", &m_y, m_minBounds.y, m_maxBounds.y);
 			ImGui::SliderFloat("Explosion center z: ", &m_z, m_minBounds.z, m_maxBounds.z);
+			ImGui::SliderFloat("Decay of velocity with time: ", &m_timeDecay, 0.9, 1.1);
+			ImGui::SliderFloat("Explosion speed: ", &m_speed, 1.0, 100.0);
 		}
 		ImGui::Checkbox("Explode: ", &m_explode);
 		ImGui::EndMenu();
@@ -68,8 +70,8 @@ void Explosion::display()
 		{
 			vec3 centerToAtom = vec3(timestep[i]) - vec3(m_x, m_y, m_z);
 			float dist = length(centerToAtom);
-			vec3 velocity = normalize(centerToAtom) * (10.0f / dist);
-			globjects::debug() << velocity.x << " " << velocity.y << " " << velocity.z;
+			vec3 velocity = normalize(centerToAtom) * (m_speed / dist);
+			//globjects::debug() << velocity.x << " " << velocity.y << " " << velocity.z;
 			//centerToAtom = normalize(centerToAtom);
 			velocityPerAtom.push_back(vec4(velocity, 0.0));
 		}
@@ -88,4 +90,9 @@ void Explosion::bindVelocity()
 void Explosion::releaseVelocity()
 {
 	m_velocity->unbind(GL_SHADER_STORAGE_BUFFER);
+}
+
+float Explosion::getTimeDecay()
+{
+	return m_timeDecay;
 }

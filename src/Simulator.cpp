@@ -104,6 +104,9 @@ void Simulator::doStep()
 	if (ImGui::BeginMenu("Simulator"))
 	{
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
+		ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100.0, 450.0);
+		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
+		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
 
 		if (ImGui::Button("Reset atom positions"))
 		{
@@ -113,6 +116,7 @@ void Simulator::doStep()
 				m_vertices[i]->setData(timesteps[0], GL_STREAM_DRAW);
 			}
 		}
+
 		ImGui::EndMenu();
 	}
 
@@ -136,6 +140,10 @@ void Simulator::doStep()
 		}
 
 		simulateProgram->setUniform("timeStep", m_timeStep);
+		simulateProgram->setUniform("timeDecay", m_explosion->getTimeDecay());
+		simulateProgram->setUniform("xBounds", m_xbounds);
+		simulateProgram->setUniform("yBounds", m_ybounds);
+		simulateProgram->setUniform("zBounds", m_zbounds);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();

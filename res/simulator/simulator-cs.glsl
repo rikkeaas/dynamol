@@ -2,6 +2,10 @@
 //uniform float roll;
 //uniform writeonly image2D destTex;
 uniform float timeStep;
+uniform float timeDecay;
+uniform vec2 xBounds;
+uniform vec2 yBounds;
+uniform vec2 zBounds;
 
 layout (local_size_x = 1) in;
 
@@ -20,12 +24,40 @@ layout (std430, binding=9) buffer prevAtoms {vec4 b[];};
 //layout (std430, binding=11) buffer axis {float axisBool[];};
 layout (std430, binding=12) buffer velocities {vec4 v[];};
 
+uint idx = gl_GlobalInvocationID.x;
+
+
+
+bool checkBounds(float pos, float bound, vec3 normal)
+{
+	if (pos < bound) 
+	{
+		vec3 ref = reflect(v[idx].xyz, normal); 
+		v[idx] = vec4(ref, 0.0);
+		return true;
+	}
+	return false;
+}
+
+
 void main() 
 {
-	uint idx = gl_GlobalInvocationID.x;
+	vec3 nextPos = b[idx].xyz + v[idx].xyz;
 
-	a[idx] = b[idx] + v[idx];
+	if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
+	else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
+	else if (checkBounds(nextPos.y, yBounds.x, vec3(0.0,1.0,0.0))) nextPos.y = yBounds.x;
+	else if (checkBounds(-nextPos.y, -yBounds.y, vec3(0.0,-1.0,0.0))) nextPos.y = yBounds.y;
+	else if (checkBounds(nextPos.z, zBounds.x, vec3(0.0,0.0,1.0))) nextPos.z = zBounds.x;
+	else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
 
+
+	a[idx] = vec4(nextPos, b[idx].w);
+	v[idx] = v[idx]*timeDecay;
+	
+	
+	
+	
 	/*
 	float time = mod(r[gl_GlobalInvocationID.x/4] + timeStep, 500.0);
 	//if (gl_GlobalInvocationID.x % 2 == 0)
