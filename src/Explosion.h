@@ -35,6 +35,4 @@ namespace dynamol
 
 		std::unique_ptr<globjects::Buffer> m_velocity;
 	};
-
-
 }

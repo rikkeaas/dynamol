@@ -48,6 +48,9 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	m_randomness = Buffer::create();
 	m_randomness->setStorage(randomOffsets, gl::GL_NONE_BIT);
 
+	m_originalPos = Buffer::create();
+	m_originalPos->setStorage(timesteps[0], gl::GL_NONE_BIT);
+
 	m_shouldUseZ = Buffer::create();
 	m_shouldUseZ->setStorage(randomBools, gl::GL_NONE_BIT);
 
@@ -108,6 +111,10 @@ void Simulator::doStep()
 		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
 		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
 
+		ImGui::Checkbox("Spring force: ", &m_springActivated);
+		if (m_springActivated)
+			ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
+
 		if (ImGui::Button("Reset atom positions"))
 		{
 			auto timesteps = m_viewer->scene()->protein()->atoms();
@@ -126,8 +133,9 @@ void Simulator::doStep()
 
 		m_vertices.at(m_activeBuffer)->bindBase(GL_SHADER_STORAGE_BUFFER, 8);
 		m_vertices.at((m_activeBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 9);
-		m_randomness->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
-		m_shouldUseZ->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
+		m_originalPos->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
+		//m_randomness->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
+		//m_shouldUseZ->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
 		m_explosion->bindVelocity();
 
 		if (m_timeStep >= 500.0)
@@ -144,6 +152,8 @@ void Simulator::doStep()
 		simulateProgram->setUniform("xBounds", m_xbounds);
 		simulateProgram->setUniform("yBounds", m_ybounds);
 		simulateProgram->setUniform("zBounds", m_zbounds);
+		simulateProgram->setUniform("springForceActive", m_springActivated);
+		simulateProgram->setUniform("springConst", m_springConst);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();
@@ -152,8 +162,9 @@ void Simulator::doStep()
 		//glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
 
 		m_explosion->releaseVelocity();
-		m_shouldUseZ->unbind(GL_SHADER_STORAGE_BUFFER);
-		m_randomness->unbind(GL_SHADER_STORAGE_BUFFER);
+		m_originalPos->unbind(GL_SHADER_STORAGE_BUFFER);
+		//m_shouldUseZ->unbind(GL_SHADER_STORAGE_BUFFER);
+		//m_randomness->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_vertices.at(m_activeBuffer)->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_vertices.at((m_activeBuffer + 1) % 2)->unbind(GL_SHADER_STORAGE_BUFFER);
 	}

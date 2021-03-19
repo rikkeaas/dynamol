@@ -31,6 +31,9 @@ namespace dynamol
 		glm::vec2 m_xbounds = glm::vec2(0.0, 450.0);
 		glm::vec2 m_ybounds = glm::vec2(0.0, 450.0);
 		glm::vec2 m_zbounds = glm::vec2(0.0, 450.0);
+		float m_springConst = 0.001;
+		bool m_springActivated = false;
+
 
 		Viewer* m_viewer;
 		bool dummyAnimation = true;
@@ -43,6 +46,7 @@ namespace dynamol
 		int m_activeBuffer = 0;
 
 		std::unique_ptr<globjects::Buffer> m_randomness;
+		std::unique_ptr<globjects::Buffer> m_originalPos;
 		std::unique_ptr<globjects::Buffer> m_shouldUseZ;
 
 		std::unique_ptr<globjects::VertexArray> m_vao = std::make_unique<globjects::VertexArray>();

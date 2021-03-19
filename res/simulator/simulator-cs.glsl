@@ -6,6 +6,8 @@ uniform float timeDecay;
 uniform vec2 xBounds;
 uniform vec2 yBounds;
 uniform vec2 zBounds;
+uniform bool springForceActive;
+uniform float springConst;
 
 layout (local_size_x = 1) in;
 
@@ -20,7 +22,7 @@ struct Item
 
 layout (std430, binding=8) buffer atoms {vec4 a[];};
 layout (std430, binding=9) buffer prevAtoms {vec4 b[];};
-//layout (std430, binding=10) buffer randomness {float r[];};
+layout (std430, binding=10) buffer originalAtoms {vec4 o[];};
 //layout (std430, binding=11) buffer axis {float axisBool[];};
 layout (std430, binding=12) buffer velocities {vec4 v[];};
 
@@ -42,7 +44,20 @@ bool checkBounds(float pos, float bound, vec3 normal)
 
 void main() 
 {
-	vec3 nextPos = b[idx].xyz + v[idx].xyz;
+	vec3 springForce = vec3(0.0);
+	if (springForceActive)
+	{
+		vec3 springAxies = b[idx].xyz - o[idx].xyz;
+		float len = length(springAxies);
+	
+		if (len != 0.0) 
+		{
+			vec3 springNorm = normalize(springAxies);
+			springForce = springNorm * len * springConst;
+		}
+	}
+
+	vec3 nextPos = b[idx].xyz + v[idx].xyz - springForce;
 
 	if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
 	else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
@@ -53,7 +68,7 @@ void main()
 
 
 	a[idx] = vec4(nextPos, b[idx].w);
-	v[idx] = v[idx]*timeDecay;
+	v[idx] = v[idx]*timeDecay - vec4(springForce,0.0);
 	
 	
 	
