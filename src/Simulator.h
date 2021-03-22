@@ -33,6 +33,8 @@ namespace dynamol
 		glm::vec2 m_zbounds = glm::vec2(0.0, 450.0);
 		float m_springConst = 0.001;
 		bool m_springActivated = false;
+		float m_gravity = 0.0;
+		bool m_gravityActivated = false;
 
 
 		Viewer* m_viewer;

@@ -2,7 +2,7 @@
 f = open("6b0x.pdb", "r")
 lines = f.readlines()
 f.close()
-atomCount = 30
+atomCount = 50
 
 nf = open("testData.pdb", "w")
 

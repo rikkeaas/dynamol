@@ -8,6 +8,7 @@ uniform vec2 yBounds;
 uniform vec2 zBounds;
 uniform bool springForceActive;
 uniform float springConst;
+uniform float gravityVariable;
 
 layout (local_size_x = 1) in;
 
@@ -57,7 +58,7 @@ void main()
 		}
 	}
 
-	vec3 nextPos = b[idx].xyz + v[idx].xyz - springForce;
+	vec3 nextPos = b[idx].xyz + v[idx].xyz - springForce  - gravityVariable*vec3(0.0, 1.0, 0.0);
 
 	if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
 	else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
@@ -68,7 +69,7 @@ void main()
 
 
 	a[idx] = vec4(nextPos, b[idx].w);
-	v[idx] = v[idx]*timeDecay - vec4(springForce,0.0);
+	v[idx] = v[idx]*timeDecay - vec4(springForce,0.0) - vec4(gravityVariable*vec3(0.0, 1.0, 0.0), 0.0);
 	
 	
 	

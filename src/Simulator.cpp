@@ -115,6 +115,12 @@ void Simulator::doStep()
 		if (m_springActivated)
 			ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
 
+		ImGui::Checkbox("Gravity: ", &m_gravityActivated);
+		if (m_gravityActivated)
+			ImGui::SliderFloat("Gravity multiplier: ", &m_gravity, 0.0, 5.0);
+		else
+			m_gravity = 0.0;
+
 		if (ImGui::Button("Reset atom positions"))
 		{
 			auto timesteps = m_viewer->scene()->protein()->atoms();
@@ -154,6 +160,7 @@ void Simulator::doStep()
 		simulateProgram->setUniform("zBounds", m_zbounds);
 		simulateProgram->setUniform("springForceActive", m_springActivated);
 		simulateProgram->setUniform("springConst", m_springConst);
+		simulateProgram->setUniform("gravityVariable", m_gravity);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();
