@@ -15,12 +15,14 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	m_viewer = viewer;
 	m_explosion = new Explosion(viewer);
 
+	/*
 	m_verticesQuad->setStorage(std::array<vec3, 1>({ vec3(0.0f, 0.0f, 0.0f) }), gl::GL_NONE_BIT);
 	auto vertexBindingQuad = m_vaoQuad->binding(0);
 	vertexBindingQuad->setBuffer(m_verticesQuad.get(), 0, sizeof(vec3));
 	vertexBindingQuad->setFormat(3, GL_FLOAT);
 	m_vaoQuad->enable(0);
 	m_vaoQuad->unbind();
+	*/
 
 	auto timesteps = viewer->scene()->protein()->atoms();
 	if (timesteps.size() > 1)
@@ -68,6 +70,7 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 
 	m_timeOut = glfwGetTime() + 3;
 
+	/*
 	std::vector<unsigned char> filler(512 * 512 * 4, 255);
 
 	m_colorTexture = Texture::create(GL_TEXTURE_2D);
@@ -77,6 +80,7 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	m_colorTexture->setParameter(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	m_colorTexture->image2D(0, GL_RGBA32F, 512,512, 0, GL_RGBA, GL_UNSIGNED_BYTE, &filler.front());
 	m_colorTexture->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+	*/
 
 	m_timeStep = 0.0;
 }
