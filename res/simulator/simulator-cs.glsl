@@ -2,6 +2,8 @@
 //uniform float roll;
 //uniform writeonly image2D destTex;
 uniform float timeStep;
+uniform float fracTimePassed;
+
 uniform float timeDecay;
 uniform vec2 xBounds;
 uniform vec2 yBounds;
@@ -42,8 +44,7 @@ bool checkBounds(float pos, float bound, vec3 normal)
 	return false;
 }
 
-
-void main() 
+void doStep(float deltaTime)
 {
 	vec3 springForce = vec3(0.0);
 	if (springForceActive)
@@ -58,7 +59,7 @@ void main()
 		}
 	}
 
-	vec3 nextPos = b[idx].xyz + v[idx].xyz - springForce  - gravityVariable*vec3(0.0, 1.0, 0.0);
+	vec3 nextPos = b[idx].xyz + (v[idx].xyz - springForce  - gravityVariable*vec3(0.0, 1.0, 0.0)) * deltaTime;
 
 	if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
 	else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
@@ -69,7 +70,25 @@ void main()
 
 
 	a[idx] = vec4(nextPos, b[idx].w);
-	v[idx] = v[idx]*timeDecay - vec4(springForce,0.0) - vec4(gravityVariable*vec3(0.0, 1.0, 0.0), 0.0);
+	
+	if (fracTimePassed >= 1) 
+	{
+		v[idx] = v[idx]*timeDecay - vec4(springForce,0.0) - vec4(gravityVariable*vec3(0.0, 1.0, 0.0), 0.0);
+	}
+}
+
+void main() 
+{
+	float tempT = timeStep;
+	while (tempT > 1) 
+	{
+		doStep(1.0);
+		tempT -= 1.0;
+	}
+	
+	doStep(tempT);
+	
+	
 	
 	
 	

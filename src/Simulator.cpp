@@ -15,6 +15,8 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	m_viewer = viewer;
 	m_explosion = new Explosion(viewer);
 
+	m_prevTime = std::chrono::high_resolution_clock::now();
+
 	/*
 	m_verticesQuad->setStorage(std::array<vec3, 1>({ vec3(0.0f, 0.0f, 0.0f) }), gl::GL_NONE_BIT);
 	auto vertexBindingQuad = m_vaoQuad->binding(0);
@@ -111,6 +113,7 @@ void Simulator::doStep()
 	if (ImGui::BeginMenu("Simulator"))
 	{
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
+		ImGui::SliderFloat("Simulation speed", &m_speedMultiplier, 0.0f, 200.0f);
 		ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100.0, 450.0);
 		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
 		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
@@ -148,16 +151,14 @@ void Simulator::doStep()
 		//m_shouldUseZ->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
 		m_explosion->bindVelocity();
 
-		if (m_timeStep >= 500.0)
-		{
-			m_timeStep = 0.0;
-		}
-		else
-		{
-			m_timeStep += 0.1;
-		}
+		std::chrono::steady_clock::time_point newTime = std::chrono::high_resolution_clock::now();
+		long deltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(newTime - m_prevTime).count();
+		m_prevTime = newTime;
 
+		m_timeStep = (deltaTime / 1000.0) * m_speedMultiplier;
+		//globjects::debug() << m_timeStep;
 		simulateProgram->setUniform("timeStep", m_timeStep);
+		simulateProgram->setUniform("fracTimePassed", m_fracTimePassed);
 		simulateProgram->setUniform("timeDecay", m_explosion->getTimeDecay());
 		simulateProgram->setUniform("xBounds", m_xbounds);
 		simulateProgram->setUniform("yBounds", m_ybounds);
@@ -178,6 +179,10 @@ void Simulator::doStep()
 		//m_randomness->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_vertices.at(m_activeBuffer)->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_vertices.at((m_activeBuffer + 1) % 2)->unbind(GL_SHADER_STORAGE_BUFFER);
+
+		m_fracTimePassed = m_fracTimePassed >= 1.0 ? m_timeStep - int(m_timeStep) : m_fracTimePassed + m_timeStep - int(m_timeStep);
+		//globjects::debug() << m_fracTimePassed;
+		
 	}
 }
 

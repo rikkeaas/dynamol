@@ -6,6 +6,8 @@
 #include <globjects/Program.h>
 #include <globjects/Shader.h>
 
+#include <chrono>
+
 #include "Renderer.h"
 #include "Explosion.h"
 
@@ -35,6 +37,9 @@ namespace dynamol
 		bool m_springActivated = false;
 		float m_gravity = 0.0;
 		bool m_gravityActivated = false;
+		float m_speedMultiplier = 1.0;
+		float m_fracTimePassed = 0.0;
+		std::chrono::steady_clock::time_point m_prevTime;
 
 
 		Viewer* m_viewer;
