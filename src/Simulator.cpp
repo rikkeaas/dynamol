@@ -17,15 +17,6 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 
 	m_prevTime = std::chrono::high_resolution_clock::now();
 
-	/*
-	m_verticesQuad->setStorage(std::array<vec3, 1>({ vec3(0.0f, 0.0f, 0.0f) }), gl::GL_NONE_BIT);
-	auto vertexBindingQuad = m_vaoQuad->binding(0);
-	vertexBindingQuad->setBuffer(m_verticesQuad.get(), 0, sizeof(vec3));
-	vertexBindingQuad->setFormat(3, GL_FLOAT);
-	m_vaoQuad->enable(0);
-	m_vaoQuad->unbind();
-	*/
-
 	auto timesteps = viewer->scene()->protein()->atoms();
 	if (timesteps.size() > 1)
 	{
@@ -39,25 +30,18 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 
 	m_vertexCount = timesteps[0].size();
 
-	// Creating some random time offsets to make dummy simulation nicer
-	std::vector<float> randomOffsets;
-	std::vector<float> randomBools;
-	srand((unsigned int)time(NULL));
-	for (float i = 0; i < m_vertexCount; i++)
-	{
-		randomOffsets.push_back(1.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 10.0)));
-		randomBools.push_back(static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 3.0)));
-	}
 
-	m_randomness = Buffer::create();
-	m_randomness->setStorage(randomOffsets, gl::GL_NONE_BIT);
+	vec3 minbounds = viewer->scene()->protein()->minimumBounds();
+	vec3 maxounds = viewer->scene()->protein()->maximumBounds();
 
+	m_xbounds = vec2(minbounds.x, maxounds.x);
+	m_ybounds = vec2(minbounds.y, maxounds.y);
+	m_zbounds = vec2(minbounds.z, maxounds.z);
+	
 	m_originalPos = Buffer::create();
 	m_originalPos->setStorage(timesteps[0], gl::GL_NONE_BIT);
 
-	m_shouldUseZ = Buffer::create();
-	m_shouldUseZ->setStorage(randomBools, gl::GL_NONE_BIT);
-
+	m_timeStep = 0.0;
 
 	createShaderProgram("debug", {
 			{ GL_VERTEX_SHADER,"./res/sphere/image-vs.glsl" },
@@ -70,7 +54,69 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 			{ GL_COMPUTE_SHADER,"./res/simulator/simulator-cs.glsl" }
 		});
 
-	m_timeOut = glfwGetTime() + 3;
+
+	m_neighborhoodList.resize(m_gridResolution * m_gridResolution * m_gridResolution);
+	//for (int i = 0; i < m_neighborhoodList.size(); i++)
+	//{
+	//	m_neighborhoodList[i] = { {vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0)}, vec4(0.0) };
+	//}
+
+	for (int i = 0; i < timesteps[0].size(); i++)
+	{
+		float normX = (timesteps[0][i].x - m_xbounds[0]) / (m_xbounds[1]+1 - m_xbounds[0]);
+		float normY = (timesteps[0][i].y - m_ybounds[0]) / (m_ybounds[1]+1 - m_ybounds[0]);
+		float normZ = (timesteps[0][i].z - m_zbounds[0]) / (m_zbounds[1]+1 - m_zbounds[0]);
+
+		int idxX = int(normX * m_gridResolution);
+		int idxY = int(normY * m_gridResolution);
+		int idxZ = int(normZ * m_gridResolution);
+
+		int idx = idxX + m_gridResolution * (idxY + m_gridResolution * idxZ);
+		globjects::debug() << idx;
+		if (m_neighborhoodList[idx].count.x < 16)
+		{
+			m_neighborhoodList[idx].atoms[int(m_neighborhoodList[idx].count.x)] = timesteps[0][i];
+			m_neighborhoodList[idx].count.x += 1.0;
+			globjects::debug() << m_neighborhoodList[idx].count.x;
+		}
+		else
+		{
+			globjects::debug() << "Full list..";
+		}
+	}
+
+	m_gridBuffer = Buffer::create();
+	m_gridBuffer->setStorage(m_neighborhoodList, gl::GL_NONE_BIT);
+
+	/*
+	m_verticesQuad->setStorage(std::array<vec3, 1>({ vec3(0.0f, 0.0f, 0.0f) }), gl::GL_NONE_BIT);
+	auto vertexBindingQuad = m_vaoQuad->binding(0);
+	vertexBindingQuad->setBuffer(m_verticesQuad.get(), 0, sizeof(vec3));
+	vertexBindingQuad->setFormat(3, GL_FLOAT);
+	m_vaoQuad->enable(0);
+	m_vaoQuad->unbind();
+	*/
+
+
+	// Creating some random time offsets to make dummy simulation nicer
+	/*
+	std::vector<float> randomOffsets;
+	std::vector<float> randomBools;
+	srand((unsigned int)time(NULL));
+	for (float i = 0; i < m_vertexCount; i++)
+	{
+		randomOffsets.push_back(1.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 10.0)));
+		randomBools.push_back(static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 3.0)));
+	}
+
+	
+	m_randomness = Buffer::create();
+	m_randomness->setStorage(randomOffsets, gl::GL_NONE_BIT);
+
+
+	m_shouldUseZ = Buffer::create();
+	m_shouldUseZ->setStorage(randomBools, gl::GL_NONE_BIT);
+	*/
 
 	/*
 	std::vector<unsigned char> filler(512 * 512 * 4, 255);
@@ -83,17 +129,6 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	m_colorTexture->image2D(0, GL_RGBA32F, 512,512, 0, GL_RGBA, GL_UNSIGNED_BYTE, &filler.front());
 	m_colorTexture->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 	*/
-
-	m_timeStep = 0.0;
-}
-
-bool Simulator::checkTimeOut() {
-	double time = glfwGetTime();
-	if (m_timeOut < time) {
-		m_timeOut = time + 3;
-		return true;
-	}
-	return false;
 }
 
 
@@ -114,7 +149,7 @@ void Simulator::doStep()
 	{
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
 		ImGui::SliderFloat("Simulation speed", &m_speedMultiplier, 0.0f, 200.0f);
-		ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100.0, 450.0);
+		ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100, 450.0);
 		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
 		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
 
@@ -148,7 +183,7 @@ void Simulator::doStep()
 		m_vertices.at((m_activeBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 9);
 		m_originalPos->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
 		//m_randomness->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
-		//m_shouldUseZ->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
+		m_gridBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
 		m_explosion->bindVelocity();
 
 		std::chrono::steady_clock::time_point newTime = std::chrono::high_resolution_clock::now();
@@ -167,6 +202,8 @@ void Simulator::doStep()
 		simulateProgram->setUniform("springConst", m_springConst);
 		simulateProgram->setUniform("gravityVariable", m_gravity);
 
+		simulateProgram->setUniform("gridResolution", m_gridResolution);
+
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();
 
@@ -174,8 +211,8 @@ void Simulator::doStep()
 		//glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
 
 		m_explosion->releaseVelocity();
+		m_gridBuffer->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_originalPos->unbind(GL_SHADER_STORAGE_BUFFER);
-		//m_shouldUseZ->unbind(GL_SHADER_STORAGE_BUFFER);
 		//m_randomness->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_vertices.at(m_activeBuffer)->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_vertices.at((m_activeBuffer + 1) % 2)->unbind(GL_SHADER_STORAGE_BUFFER);

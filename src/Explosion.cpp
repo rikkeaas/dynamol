@@ -25,6 +25,10 @@ Explosion::Explosion(Viewer* viewer) : Renderer(viewer)
 
 	m_minBounds = viewer->scene()->protein()->minimumBounds();
 	m_maxBounds = viewer->scene()->protein()->maximumBounds();
+
+	m_x = 0.5 * (m_minBounds.x + m_maxBounds.x);
+	m_y = 0.5 * (m_minBounds.y + m_maxBounds.y);
+	m_z = 0.5 * (m_minBounds.z + m_maxBounds.z);
 }
 
 Explosion::~Explosion() 

@@ -13,6 +13,7 @@
 
 namespace dynamol
 {
+
 	class Viewer;
 
 	class Simulator : public Renderer
@@ -23,7 +24,6 @@ namespace dynamol
 
 		void doStep();
 		void simulate();
-		bool checkTimeOut();
 
 		void debug();
 		virtual void display();
@@ -40,6 +40,17 @@ namespace dynamol
 		float m_speedMultiplier = 1.0;
 		float m_fracTimePassed = 0.0;
 		std::chrono::steady_clock::time_point m_prevTime;
+
+		// Neighborhood grid
+		struct GridCell
+		{
+			glm::vec4 atoms[16];
+			glm::vec4 count;
+		};
+
+		int m_gridResolution = 2; // Same for x,y,z
+		std::vector<GridCell> m_neighborhoodList;
+		std::unique_ptr<globjects::Buffer> m_gridBuffer;
 
 
 		Viewer* m_viewer;
@@ -59,7 +70,6 @@ namespace dynamol
 		std::unique_ptr<globjects::VertexArray> m_vao = std::make_unique<globjects::VertexArray>();
 		float m_vertexCount;
 
-		float m_timeOut;
 		float m_timeStep;
 
 		std::unique_ptr<globjects::Texture> m_colorTexture = nullptr;

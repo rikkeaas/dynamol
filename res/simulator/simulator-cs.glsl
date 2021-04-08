@@ -12,6 +12,8 @@ uniform bool springForceActive;
 uniform float springConst;
 uniform float gravityVariable;
 
+uniform int gridResolution;
+
 layout (local_size_x = 1) in;
 
 struct Item
@@ -22,11 +24,17 @@ struct Item
   float unused;
 };
 
+struct GridCell
+{
+	vec4 atoms[16];
+	vec4 count;
+};
+
 
 layout (std430, binding=8) buffer atoms {vec4 a[];};
 layout (std430, binding=9) buffer prevAtoms {vec4 b[];};
 layout (std430, binding=10) buffer originalAtoms {vec4 o[];};
-//layout (std430, binding=11) buffer axis {float axisBool[];};
+layout (std430, binding=11) buffer gridBuf {GridCell grid[];};
 layout (std430, binding=12) buffer velocities {vec4 v[];};
 
 uint idx = gl_GlobalInvocationID.x;
@@ -46,9 +54,32 @@ bool checkBounds(float pos, float bound, vec3 normal)
 
 void doStep(float deltaTime)
 {
+	float normX = (b[idx].x - xBounds[0]) / (xBounds[1] + 1 - xBounds[0]);
+	float normY = (b[idx].y - yBounds[0]) / (yBounds[1] + 1 - yBounds[0]);
+	float normZ = (b[idx].z - zBounds[0]) / (zBounds[1] + 1 - zBounds[0]);
+
+	int idxX = int(normX * gridResolution);
+	int idxY = int(normY * gridResolution);
+	int idxZ = int(normZ * gridResolution);
+
+	int gridIdx = idxX + gridResolution * (idxY + gridResolution * idxZ);
+
+
 	vec3 springForce = vec3(0.0);
-	if (springForceActive)
+	if (springForceActive && grid[gridIdx].count.x > 0)
 	{
+		/*
+		vec3 springAxies = b[idx].xyz - grid[gridIdx].atoms[0].xyz;
+		float len = length(springAxies);
+	
+		if (len != 0.0) 
+		{
+			vec3 springNorm = normalize(springAxies);
+			springForce = springNorm * len * springConst;
+		}
+
+		*/
+		
 		vec3 springAxies = b[idx].xyz - o[idx].xyz;
 		float len = length(springAxies);
 	
@@ -57,6 +88,7 @@ void doStep(float deltaTime)
 			vec3 springNorm = normalize(springAxies);
 			springForce = springNorm * len * springConst;
 		}
+		
 	}
 
 	vec3 nextPos = b[idx].xyz + (v[idx].xyz - springForce  - gravityVariable*vec3(0.0, 1.0, 0.0)) * deltaTime;
@@ -69,7 +101,14 @@ void doStep(float deltaTime)
 	else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
 
 
-	a[idx] = vec4(nextPos, b[idx].w);
+	uint id = floatBitsToUint(b[idx].w);
+	uint elementId = bitfieldExtract(id,0,8);
+	uint residueId = bitfieldExtract(id,8,8);
+	uint chainId = bitfieldExtract(id,16,8);
+
+	uint atomAttributes = elementId | (gridIdx << 8) | (chainId << 16);
+
+	a[idx] = vec4(nextPos, uintBitsToFloat(atomAttributes));
 	
 	if (fracTimePassed >= 1) 
 	{
