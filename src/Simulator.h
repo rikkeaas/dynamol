@@ -44,13 +44,14 @@ namespace dynamol
 		// Neighborhood grid
 		struct GridCell
 		{
-			glm::vec4 atoms[16];
-			glm::vec4 count;
+			glm::uvec4 count;
+			glm::vec4 atoms[300];
 		};
 
-		int m_gridResolution = 2; // Same for x,y,z
-		std::vector<GridCell> m_neighborhoodList;
-		std::unique_ptr<globjects::Buffer> m_gridBuffer;
+		int m_gridResolution = 7; // Same for x,y,z
+		std::vector<GridCell> m_emptyNeighborhoodList;
+		std::vector<std::unique_ptr<globjects::Buffer>> m_grids;
+		int m_activeGridBuffer = 0;
 
 
 		Viewer* m_viewer;

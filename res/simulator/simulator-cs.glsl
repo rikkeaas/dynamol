@@ -26,19 +26,49 @@ struct Item
 
 struct GridCell
 {
-	vec4 atoms[16];
-	vec4 count;
+	uvec4 count;
+	vec4 atoms[300];
 };
 
 
 layout (std430, binding=8) buffer atoms {vec4 a[];};
 layout (std430, binding=9) buffer prevAtoms {vec4 b[];};
 layout (std430, binding=10) buffer originalAtoms {vec4 o[];};
-layout (std430, binding=11) buffer gridBuf {GridCell grid[];};
-layout (std430, binding=12) buffer velocities {vec4 v[];};
+layout (std140, binding=11) buffer gridBuf {GridCell grid[];};
+layout (std140, binding=12) buffer updatedGridBuf {GridCell updatedGrid[];};
+layout (std430, binding=13) buffer velocities {vec4 v[];};
 
 uint idx = gl_GlobalInvocationID.x;
 
+vec4 neighbors[300*7];
+
+int oneCell(int x, int y, int z, int curr)
+{
+	int gridIdx = x + gridResolution * (y + gridResolution * z);
+	for (int i = 0; i < grid[gridIdx].count.x; i++)
+	{
+		neighbors[curr] = grid[gridIdx].atoms[i];
+		curr += 1;
+	}
+
+	return curr;
+}
+
+int getNeighbors(int x, int y, int z) 
+{
+	
+	int curr = 0;
+
+	curr = oneCell(x, y, z, curr);
+	if (x > 0) curr = oneCell(x-1, y, z, curr);
+	if (x+1 < gridResolution) curr = oneCell(x+1, y, z, curr);
+	if (y > 0) curr = oneCell(x, y-1, z, curr);
+	if (y+1 < gridResolution) curr = oneCell(x, y+1, z, curr);
+	if (z > 0) curr = oneCell(x, y, z-1, curr);
+	if (z+1 < gridResolution) curr = oneCell(x, y, z+1, curr);
+
+	return curr; // Corresponds to the length of the neighborhood list. Neighborhood list will contain current atom also..
+}
 
 
 bool checkBounds(float pos, float bound, vec3 normal)
@@ -63,11 +93,22 @@ void doStep(float deltaTime)
 	int idxZ = int(normZ * gridResolution);
 
 	int gridIdx = idxX + gridResolution * (idxY + gridResolution * idxZ);
-
+	int nbOfNeighbors = getNeighbors(idxX, idxY, idxZ);
 
 	vec3 springForce = vec3(0.0);
 	if (springForceActive && grid[gridIdx].count.x > 0)
 	{
+		for (int i = 0; i < grid[gridIdx].count.x; i++)
+		{
+			vec3 springAxies = b[idx].xyz - grid[gridIdx].atoms[i].xyz;
+			float len = length(springAxies);
+	
+			if (len != 0.0) 
+			{
+				vec3 springNorm = normalize(springAxies);
+				springForce += springNorm * len * springConst;
+			}
+		}
 		/*
 		vec3 springAxies = b[idx].xyz - grid[gridIdx].atoms[0].xyz;
 		float len = length(springAxies);
@@ -80,18 +121,9 @@ void doStep(float deltaTime)
 
 		*/
 		
-		vec3 springAxies = b[idx].xyz - o[idx].xyz;
-		float len = length(springAxies);
-	
-		if (len != 0.0) 
-		{
-			vec3 springNorm = normalize(springAxies);
-			springForce = springNorm * len * springConst;
-		}
-		
 	}
 
-	vec3 nextPos = b[idx].xyz + (v[idx].xyz - springForce  - gravityVariable*vec3(0.0, 1.0, 0.0)) * deltaTime;
+	vec3 nextPos = b[idx].xyz + (v[idx].xyz - springForce - gravityVariable*vec3(0.0, 1.0, 0.0)) * deltaTime;
 
 	if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
 	else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
@@ -106,7 +138,8 @@ void doStep(float deltaTime)
 	uint residueId = bitfieldExtract(id,8,8);
 	uint chainId = bitfieldExtract(id,16,8);
 
-	uint atomAttributes = elementId | (gridIdx << 8) | (chainId << 16);
+	//uint atomAttributes = elementId | (grid[gridIdx].count.x << 8) | (chainId << 16);
+	uint atomAttributes = elementId | (nbOfNeighbors << 8) | (chainId << 16);
 
 	a[idx] = vec4(nextPos, uintBitsToFloat(atomAttributes));
 	
@@ -129,9 +162,22 @@ void main()
 	
 	
 	
-	
-	
-	
+	float normX = (a[idx].x - xBounds[0]) / (xBounds[1] + 1 - xBounds[0]);
+	float normY = (a[idx].y - yBounds[0]) / (yBounds[1] + 1 - yBounds[0]);
+	float normZ = (a[idx].z - zBounds[0]) / (zBounds[1] + 1 - zBounds[0]);
+
+	int idxX = int(normX * gridResolution);
+	int idxY = int(normY * gridResolution);
+	int idxZ = int(normZ * gridResolution);
+
+	int gridIdx = idxX + gridResolution * (idxY + gridResolution * idxZ);
+
+	uint listIdx = atomicAdd(updatedGrid[gridIdx].count.x, 1);
+	if (listIdx < updatedGrid[gridIdx].atoms.length())
+	{
+		updatedGrid[gridIdx].atoms[listIdx] = a[idx];
+	}
+
 	/*
 	float time = mod(r[gl_GlobalInvocationID.x/4] + timeStep, 500.0);
 	//if (gl_GlobalInvocationID.x % 2 == 0)

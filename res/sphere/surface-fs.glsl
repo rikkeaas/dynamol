@@ -160,7 +160,7 @@ void main()
 		if (coloring == 1)
 			diffuseColor = elements[elementId].color.rgb;
 		else if (coloring == 2)
-			diffuseColor = residues[residueId].color.rgb;
+			diffuseColor = residues[int(mod(residueId,22))].color.rgb;
 		else if (coloring == 3)
 			diffuseColor = chains[chainId].color.rgb;
 
@@ -276,7 +276,7 @@ void main()
 						else if (coloring == 2)
 						{
 							uint residueId = bitfieldExtract(id,8,8);
-							cj = residues[residueId].color.rgb;
+							cj = residues[int(mod(residueId,22))].color.rgb;
 						}
 						else if (coloring == 3)
 						{

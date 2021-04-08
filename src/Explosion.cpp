@@ -88,7 +88,7 @@ void Explosion::display()
 
 void Explosion::bindVelocity()
 {
-	m_velocity->bindBase(GL_SHADER_STORAGE_BUFFER, 12);
+	m_velocity->bindBase(GL_SHADER_STORAGE_BUFFER, 13);
 }
 
 void Explosion::releaseVelocity()

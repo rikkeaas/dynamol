@@ -200,7 +200,7 @@ void Protein::load(const std::string& filename)
 		m_activeElementColorsRadiiPacked.push_back(vec4(elementColors()[id],elementRadii()[id]));
 	}
 
-	for (auto id : m_activeResidueIds)
+	for (uint id = 0; id < 23; id++)//for (auto id : m_activeResidueIds)
 	{
 		m_activeResidueColors.push_back(residueColors()[id]);
 		m_activeResidueColorsPacked.push_back(vec4(residueColors()[id],1.0f));

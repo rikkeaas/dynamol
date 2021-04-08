@@ -55,12 +55,13 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 		});
 
 
-	m_neighborhoodList.resize(m_gridResolution * m_gridResolution * m_gridResolution);
+	m_emptyNeighborhoodList.resize(m_gridResolution * m_gridResolution * m_gridResolution);
 	//for (int i = 0; i < m_neighborhoodList.size(); i++)
 	//{
 	//	m_neighborhoodList[i] = { {vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0)}, vec4(0.0) };
 	//}
 
+	/*
 	for (int i = 0; i < timesteps[0].size(); i++)
 	{
 		float normX = (timesteps[0][i].x - m_xbounds[0]) / (m_xbounds[1]+1 - m_xbounds[0]);
@@ -73,10 +74,10 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 
 		int idx = idxX + m_gridResolution * (idxY + m_gridResolution * idxZ);
 		globjects::debug() << idx;
-		if (m_neighborhoodList[idx].count.x < 16)
+		if (m_neighborhoodList[idx].count.x < 300)
 		{
 			m_neighborhoodList[idx].atoms[int(m_neighborhoodList[idx].count.x)] = timesteps[0][i];
-			m_neighborhoodList[idx].count.x += 1.0;
+			m_neighborhoodList[idx].count.x += 1;
 			globjects::debug() << m_neighborhoodList[idx].count.x;
 		}
 		else
@@ -84,9 +85,14 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 			globjects::debug() << "Full list..";
 		}
 	}
+	*/
 
-	m_gridBuffer = Buffer::create();
-	m_gridBuffer->setStorage(m_neighborhoodList, gl::GL_NONE_BIT);
+	m_grids.push_back(Buffer::create());
+	m_grids.back()->setData(m_emptyNeighborhoodList, GL_STREAM_DRAW);
+
+	m_grids.push_back(Buffer::create());
+	m_grids.back()->setData(m_emptyNeighborhoodList, GL_STREAM_DRAW);
+	//m_gridBuffer->setData(m_neighborhoodList, GL_STREAM_DRAW);
 
 	/*
 	m_verticesQuad->setStorage(std::array<vec3, 1>({ vec3(0.0f, 0.0f, 0.0f) }), gl::GL_NONE_BIT);
@@ -137,6 +143,7 @@ void Simulator::simulate()
 	auto currentState = State::currentState();
 
 	m_activeBuffer = (m_activeBuffer + 1) % 2;
+	m_activeGridBuffer = (m_activeGridBuffer + 1) % 2;
 	doStep();
 
 	currentState->apply();
@@ -148,6 +155,9 @@ void Simulator::doStep()
 	if (ImGui::BeginMenu("Simulator"))
 	{
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
+
+		ImGui::SliderInt("Grid resolution", &m_gridResolution, 1, 20);
+
 		ImGui::SliderFloat("Simulation speed", &m_speedMultiplier, 0.0f, 200.0f);
 		ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100, 450.0);
 		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
@@ -183,7 +193,8 @@ void Simulator::doStep()
 		m_vertices.at((m_activeBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 9);
 		m_originalPos->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
 		//m_randomness->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
-		m_gridBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
+		m_grids.at(m_activeGridBuffer)->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
+		m_grids.at((m_activeGridBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 12);
 		m_explosion->bindVelocity();
 
 		std::chrono::steady_clock::time_point newTime = std::chrono::high_resolution_clock::now();
@@ -211,7 +222,8 @@ void Simulator::doStep()
 		//glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
 
 		m_explosion->releaseVelocity();
-		m_gridBuffer->unbind(GL_SHADER_STORAGE_BUFFER);
+		m_grids.at((m_activeGridBuffer + 1) % 2)->unbind(GL_SHADER_STORAGE_BUFFER);
+		m_grids.at(m_activeGridBuffer)->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_originalPos->unbind(GL_SHADER_STORAGE_BUFFER);
 		//m_randomness->unbind(GL_SHADER_STORAGE_BUFFER);
 		m_vertices.at(m_activeBuffer)->unbind(GL_SHADER_STORAGE_BUFFER);
@@ -221,6 +233,7 @@ void Simulator::doStep()
 		//globjects::debug() << m_fracTimePassed;
 		
 	}
+	m_grids.at(m_activeBuffer)->setData(m_emptyNeighborhoodList, GL_STREAM_DRAW);
 }
 
 
