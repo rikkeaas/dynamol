@@ -4,7 +4,12 @@
 
 //uniform bool mr;
 uniform vec2 mousePosPixel;
-uniform sampler2D normalTexture;
+uniform sampler2D positionTexture;
+
+uniform uint maxIdx;
+uniform uint selectedAtomId;
+
+uniform mat4 invMVP; 
 
 uniform float timeStep;
 uniform float fracTimePassed;
@@ -104,41 +109,47 @@ void doStep(float deltaTime)
 	int nbOfNeighbors = getNeighbors(idxX, idxY, idxZ);
 
 	vec3 springForce = vec3(0.0);
-	if (springForceActive && grid[gridIdx].count.x > 0)
+	if (springForceActive && idx != 0)
 	{
-		/*
-		for (int i = 0; i < grid[gridIdx].count.x; i++)
-		{
-			vec3 springAxies = b[idx].xyz - grid[gridIdx].atoms[i].xyz;
-			float len = length(springAxies);
-	
-			if (len != 0.0) 
-			{
-				vec3 springNorm = normalize(springAxies);
-				springForce += springNorm * len * springConst;
-			}
-		}
-		*/
-		vec3 springAxies = b[idx].xyz - o[idx].xyz;
-		float len = length(springAxies);
+		
+		vec3 springAxies = b[idx].xyz - b[idx-1].xyz;
+		float len = length(springAxies) - 3;
 	
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
 			springForce += springNorm * len * springConst;
 		}
-		/*
-		vec3 springAxies = b[idx].xyz - grid[gridIdx].atoms[0].xyz;
+	}
+	if (springForceActive && idx < maxIdx-1)
+	{
+		vec3 springAxies = b[idx].xyz - b[idx+1].xyz;
+		float len = length(springAxies) - 3;
+	
+		if (len != 0.0) 
+		{
+			vec3 springNorm = normalize(springAxies);
+			springForce += springNorm * len * springConst;
+		}
+	}
+
+	uint id = floatBitsToUint(b[idx].w);
+	uint elementId = bitfieldExtract(id,0,8);
+	uint residueId = bitfieldExtract(id,8,8);
+	uint chainId = bitfieldExtract(id,16,8);
+
+	if (elephantMode && chainId == selectedAtomId)
+	{
+		vec4 mp = invMVP*vec4(mousePosPixel,0.0,1.0);
+		mp /= mp.w;
+		vec3 springAxies = vec3(b[idx].xy - mp.xy, 0.0);
 		float len = length(springAxies);
 	
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			springForce = springNorm * len * springConst;
+			springForce += springNorm * len * springConst / 4.0;
 		}
-
-		*/
-		
 	}
 
 	vec3 repulsionForce = vec3(0.0);
@@ -163,10 +174,7 @@ void doStep(float deltaTime)
 	else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
 
 
-	uint id = floatBitsToUint(b[idx].w);
-	uint elementId = bitfieldExtract(id,0,8);
-	uint residueId = bitfieldExtract(id,8,8);
-	uint chainId = bitfieldExtract(id,16,8);
+	
 
 	//uint atomAttributes = elementId | (grid[gridIdx].count.x << 8) | (chainId << 16);
 	uint atomAttributes = elementId | (nbOfNeighbors << 8) | (chainId << 16);
@@ -184,20 +192,14 @@ void main()
 {
 	if (elephantMode)
 	{
-		vec4 norm = texelFetch(normalTexture, ivec2(mousePosPixel), 0);
-		uint idd = floatBitsToUint(norm.w);
 		uint id = floatBitsToUint(a[idx].w);
-		//idd = 2;
-
+	
 		uint elementId = bitfieldExtract(id,0,8);
 		uint residueId = bitfieldExtract(id,8,8);
 		uint chainId = bitfieldExtract(id,16,8);
 
-		uint mousecChainId = bitfieldExtract(idd,16,8);
-
-
 		uint atomAttributes;
-		if (chainId == mousecChainId)
+		if (selectedAtomId >= 0 && selectedAtomId < maxIdx && chainId == selectedAtomId)
 		{
 			atomAttributes = elementId | (2 << 8) | (chainId << 16);
 		}

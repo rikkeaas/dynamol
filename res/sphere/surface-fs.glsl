@@ -116,7 +116,7 @@ void main()
 		discard;
 
 	vec4 position = texelFetch(positionTexture,ivec2(gl_FragCoord.xy),0);
-	vec4 normal = texelFetch(normalTexture,ivec2(mousepos),0);
+	vec4 normal = texelFetch(normalTexture,ivec2(gl_FragCoord.xy),0);
 
 	vec4 fragCoord = gFragmentPosition;
 	fragCoord /= fragCoord.w;

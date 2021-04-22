@@ -9,8 +9,8 @@ flat in vec4 gSpherePosition;
 flat in float gSphereRadius;
 flat in uint gSphereId;
 
-out vec4 fragPosition;
 out vec4 fragNormal;
+out vec4 fragPosition;
 
 struct Sphere
 {			

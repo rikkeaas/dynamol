@@ -302,8 +302,8 @@ SphereRenderer::SphereRenderer(Viewer* viewer) : Renderer(viewer)
 	}
 
 	m_sphereFramebuffer = Framebuffer::create();
-	m_sphereFramebuffer->attachTexture(GL_COLOR_ATTACHMENT0, m_spherePositionTexture.get());
-	m_sphereFramebuffer->attachTexture(GL_COLOR_ATTACHMENT1, m_sphereNormalTexture.get());
+	m_sphereFramebuffer->attachTexture(GL_COLOR_ATTACHMENT1, m_spherePositionTexture.get());
+	m_sphereFramebuffer->attachTexture(GL_COLOR_ATTACHMENT0, m_sphereNormalTexture.get());
 	m_sphereFramebuffer->attachTexture(GL_DEPTH_ATTACHMENT, m_depthTexture.get());
 	m_sphereFramebuffer->setDrawBuffers({ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 });
 
@@ -1116,11 +1116,12 @@ void SphereRenderer::display()
 
 	}
 
-	//m_sphereFramebuffer->bind();
-	m_sphereNormalTexture->bindActive(0);
+
+	m_sphereFramebuffer->bind();
+	m_spherePositionTexture->bindActive(0);
 	m_simulator->simulate();
-	m_sphereNormalTexture->unbindActive(0);
-	//m_sphereFramebuffer->unbind();
+	m_spherePositionTexture->unbindActive(0);
+	m_sphereFramebuffer->unbind();
 
 	//m_simulator->debug();
 

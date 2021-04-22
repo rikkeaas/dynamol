@@ -202,36 +202,28 @@ void Simulator::doStep()
 		
 		if (m_mouseRepulsion)
 		{	
-			if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+			glfwGetCursorPos(m_viewer->window(), &mouseX, &mouseY);
+
+			if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !m_mousePress)
 			{
-				glfwGetCursorPos(m_viewer->window(), &mouseX, &mouseY);
-				if (!m_mousePress)
-				{
-					
-					mousePos = vec2(2.0f * float(mouseX) / float(m_viewer->viewportSize().x) - 1.0f, -2.0f * float(mouseY) / float(m_viewer->viewportSize().y) + 1.0f);
-
-					m_mousePress = true;
-					globjects::debug() << "Mouse pressed at " << mouseX << " " << mouseY;
-
-					//Framebuffer::defaultFBO()->bind();
-					float data;
-					glReadPixels(mouseX, mouseY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &data);
-					//Framebuffer::defaultFBO()->unbind();
-
-					globjects::debug() << data;//<< data.x << " " << data.y << " " << data.z << " " << data.w;
-
-				}
-			
-			
-				//globjects::debug() << "Pressing mouse";
-			
-
-				//globjects::debug() << mouseX << ", " << mouseY << ", " << data;
+				m_mousePress = true;
+				globjects::debug() << "Mouse pressed at " << mouseX << " " << mouseY;
 			}
+
 			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && m_mousePress)
 			{
+				
+				vec4 data;
+				glReadPixels(mouseX, m_viewer->viewportSize().y - mouseY, 1, 1, GL_RGBA, GL_FLOAT, &data);
+				uint id = floatBitsToUint(data.w);
+				uint elementId = bitfieldExtract(id, 0, 8);
+				uint residueId = bitfieldExtract(id, 8, 8);
+				selectedAtomId = bitfieldExtract(id, 16, 8);
+				globjects::debug() << elementId << " " << residueId << " " << selectedAtomId;
+
 				m_mousePress = false;
 				globjects::debug() << "Mouse release";
+
 			}
 		}
 
@@ -254,7 +246,12 @@ void Simulator::doStep()
 
 		simulateProgram->setUniform("mr", m_mouseRepulsion);
 		simulateProgram->setUniform("mousePosPixel", vec2(mouseX, m_viewer->viewportSize().y -mouseY));
-		simulateProgram->setUniform("normalTexture", 0);
+		simulateProgram->setUniform("positionTexture", 0);
+
+		simulateProgram->setUniform("invMVP", m_viewer->modelViewProjectionTransform());
+
+		simulateProgram->setUniform("maxIdx", uint(m_vertexCount));
+		simulateProgram->setUniform("selectedAtomId", selectedAtomId);
 
 		simulateProgram->setUniform("timeStep", m_timeStep);
 		simulateProgram->setUniform("fracTimePassed", m_fracTimePassed);

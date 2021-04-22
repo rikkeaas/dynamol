@@ -34,6 +34,7 @@ namespace dynamol
 		bool m_mousePress = false;
 		double mouseX = 0.0;
 		double mouseY = 0.0;
+		glm::uint selectedAtomId;
 
 		glm::vec2 m_xbounds = glm::vec2(0.0, 450.0);
 		glm::vec2 m_ybounds = glm::vec2(0.0, 450.0);
