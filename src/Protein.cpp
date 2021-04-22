@@ -109,6 +109,8 @@ void Protein::load(const std::string& filename)
 
 	std::vector<vec4> atoms;
 
+	uint count = 0;
+
 	while (std::getline(file, str))
 	{
 		//std::vector<std::string> tokens;
@@ -184,9 +186,11 @@ void Protein::load(const std::string& filename)
 				m_chainIdMap[chainId] = chainIndex;
 			}
 
-			uint atomAttributes = elementIndex | (residueIndex << 8) | (chainIndex << 16);
+			uint atomAttributes = elementIndex | (residueIndex << 8) | (count << 16);
 			vec4 atom(x, y, z, uintBitsToFloat(atomAttributes));
 			atoms.push_back(atom);
+
+			count += 1;
 
 			m_minimumBounds = min(m_minimumBounds, vec3(atom));
 			m_maximumBounds = max(m_maximumBounds, vec3(atom));

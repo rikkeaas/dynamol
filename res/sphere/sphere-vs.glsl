@@ -9,6 +9,8 @@ uniform float animationTime;
 uniform float animationAmplitude;
 uniform float animationFrequency;
 
+uniform uvec2 mousepos;
+
 //	Simplex 4D Noise 
 //	by Ian McEwan, Ashima Arts
 //

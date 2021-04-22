@@ -3,6 +3,7 @@
 uniform mat4 modelViewProjectionMatrix;
 uniform mat4 inverseModelViewProjectionMatrix;
 
+
 in vec4 gFragmentPosition;
 flat in vec4 gSpherePosition;
 flat in float gSphereRadius;

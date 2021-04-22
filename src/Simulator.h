@@ -16,6 +16,7 @@ namespace dynamol
 
 	class Viewer;
 
+
 	class Simulator : public Renderer
 	{
 	public:
@@ -30,6 +31,10 @@ namespace dynamol
 		
 
 	private:
+		bool m_mousePress = false;
+		double mouseX = 0.0;
+		double mouseY = 0.0;
+
 		glm::vec2 m_xbounds = glm::vec2(0.0, 450.0);
 		glm::vec2 m_ybounds = glm::vec2(0.0, 450.0);
 		glm::vec2 m_zbounds = glm::vec2(0.0, 450.0);
@@ -53,6 +58,7 @@ namespace dynamol
 		std::vector<std::unique_ptr<globjects::Buffer>> m_grids;
 		int m_activeGridBuffer = 0;
 
+		bool m_mouseRepulsion = false;
 
 		Viewer* m_viewer;
 		bool dummyAnimation = true;

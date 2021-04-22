@@ -22,6 +22,12 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	{
 		globjects::debug() << "Disregarding animation for simulation purposes...";
 	}
+
+	/*for (int i = 0; i < timesteps[0].size(); i++)
+	{
+		globjects::debug() << timesteps[0][i].x << ", " << timesteps[0][i].y <<", " << timesteps[0][i].z << ", " << timesteps[0][i].a;
+	}*/
+
 	m_vertices.push_back(Buffer::create());
 	m_vertices.back()->setData(timesteps[0], GL_STREAM_DRAW); // stream draw means changing values in buffer often, static draw means changing only once
 
@@ -135,7 +141,10 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	m_colorTexture->image2D(0, GL_RGBA32F, 512,512, 0, GL_RGBA, GL_UNSIGNED_BYTE, &filler.front());
 	m_colorTexture->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 	*/
+
 }
+
+
 
 
 void Simulator::simulate()
@@ -155,6 +164,8 @@ void Simulator::doStep()
 	if (ImGui::BeginMenu("Simulator"))
 	{
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
+
+		ImGui::Checkbox("Elephant mode: ", &m_mouseRepulsion);
 
 		ImGui::SliderInt("Grid resolution", &m_gridResolution, 1, 20);
 
@@ -187,6 +198,43 @@ void Simulator::doStep()
 
 	if (dummyAnimation)
 	{
+		vec2 mousePos = vec2(0.0);
+		
+		if (m_mouseRepulsion)
+		{	
+			if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+			{
+				glfwGetCursorPos(m_viewer->window(), &mouseX, &mouseY);
+				if (!m_mousePress)
+				{
+					
+					mousePos = vec2(2.0f * float(mouseX) / float(m_viewer->viewportSize().x) - 1.0f, -2.0f * float(mouseY) / float(m_viewer->viewportSize().y) + 1.0f);
+
+					m_mousePress = true;
+					globjects::debug() << "Mouse pressed at " << mouseX << " " << mouseY;
+
+					//Framebuffer::defaultFBO()->bind();
+					float data;
+					glReadPixels(mouseX, mouseY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &data);
+					//Framebuffer::defaultFBO()->unbind();
+
+					globjects::debug() << data;//<< data.x << " " << data.y << " " << data.z << " " << data.w;
+
+				}
+			
+			
+				//globjects::debug() << "Pressing mouse";
+			
+
+				//globjects::debug() << mouseX << ", " << mouseY << ", " << data;
+			}
+			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && m_mousePress)
+			{
+				m_mousePress = false;
+				globjects::debug() << "Mouse release";
+			}
+		}
+
 		auto simulateProgram = shaderProgram("simulate");
 
 		m_vertices.at(m_activeBuffer)->bindBase(GL_SHADER_STORAGE_BUFFER, 8);
@@ -203,6 +251,11 @@ void Simulator::doStep()
 
 		m_timeStep = (deltaTime / 1000.0) * m_speedMultiplier;
 		//globjects::debug() << m_timeStep;
+
+		simulateProgram->setUniform("mr", m_mouseRepulsion);
+		simulateProgram->setUniform("mousePosPixel", vec2(mouseX, m_viewer->viewportSize().y -mouseY));
+		simulateProgram->setUniform("normalTexture", 0);
+
 		simulateProgram->setUniform("timeStep", m_timeStep);
 		simulateProgram->setUniform("fracTimePassed", m_fracTimePassed);
 		simulateProgram->setUniform("timeDecay", m_explosion->getTimeDecay());
@@ -214,6 +267,9 @@ void Simulator::doStep()
 		simulateProgram->setUniform("gravityVariable", m_gravity);
 
 		simulateProgram->setUniform("gridResolution", m_gridResolution);
+
+		simulateProgram->setUniform("elephantMode", m_mouseRepulsion);
+		simulateProgram->setUniform("mousePosition", mousePos);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();
@@ -233,7 +289,7 @@ void Simulator::doStep()
 		//globjects::debug() << m_fracTimePassed;
 		
 	}
-	m_grids.at(m_activeBuffer)->setData(m_emptyNeighborhoodList, GL_STREAM_DRAW);
+	m_grids.at(m_activeGridBuffer)->setData(m_emptyNeighborhoodList, GL_STREAM_DRAW);
 }
 
 

@@ -359,7 +359,6 @@ void SphereRenderer::display()
 	//if (m_simulator->checkTimeOut())
 	//{
 	//globjects::debug() << "Timeout works!";
-	m_simulator->simulate();
 	//}
 
 	// SaveOpenGL state
@@ -385,6 +384,8 @@ void SphereRenderer::display()
 		m_blurTexture->image2D(0, GL_RGBA32F, m_framebufferSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 		m_colorTexture->image2D(0, GL_RGBA32F, m_framebufferSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 	}
+
+	//globjects::debug() << m_framebufferSize.x << ", " << m_framebufferSize.y;
 
 	// our shader programs
 
@@ -455,7 +456,7 @@ void SphereRenderer::display()
 	static bool materialMapping = false;
 	static bool depthOfField = false;
 
-	static int coloring = 0;
+	static int coloring = 2;
 	static bool animate = false;
 	static float animationAmplitude = 1.0f;
 	static float animationFrequency = 1.0f;
@@ -719,6 +720,9 @@ void SphereRenderer::display()
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
+	//globjects::debug() << uint(mouseX) << " " << uint(mouseY);
+
+	programSphere->setUniform("mousepos", uvec2(mouseX, mouseY));
 	programSphere->setUniform("modelViewMatrix", modelViewMatrix);
 	programSphere->setUniform("projectionMatrix", projectionMatrix);
 	programSphere->setUniform("modelViewProjectionMatrix", modelViewProjectionMatrix);
@@ -800,6 +804,8 @@ void SphereRenderer::display()
 	m_materialTextures[materialTextureIndex]->bindActive(6);
 	m_intersectionBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 1);
 	m_statisticsBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 2);
+
+	programSurface->setUniform("mousepos", uvec2(mouseX, viewportSize.y - mouseY));
 
 	programSurface->setUniform("modelViewMatrix", modelViewMatrix);
 	programSurface->setUniform("projectionMatrix", projectionMatrix);
@@ -1109,6 +1115,12 @@ void SphereRenderer::display()
 		m_colorTexture->unbindActive(0);
 
 	}
+
+	//m_sphereFramebuffer->bind();
+	m_sphereNormalTexture->bindActive(0);
+	m_simulator->simulate();
+	m_sphereNormalTexture->unbindActive(0);
+	//m_sphereFramebuffer->unbind();
 
 	//m_simulator->debug();
 
