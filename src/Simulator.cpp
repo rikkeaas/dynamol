@@ -40,8 +40,8 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	vec3 minbounds = viewer->scene()->protein()->minimumBounds();
 	vec3 maxounds = viewer->scene()->protein()->maximumBounds();
 
-	m_xbounds = vec2(minbounds.x, maxounds.x);
-	m_ybounds = vec2(minbounds.y, maxounds.y);
+	m_xbounds = vec2(minbounds.x- 50, maxounds.x + 50);
+	m_ybounds = vec2(minbounds.y- 50, maxounds.y + 50);
 	m_zbounds = vec2(minbounds.z, maxounds.z);
 	
 	m_originalPos = Buffer::create();
@@ -174,9 +174,10 @@ void Simulator::doStep()
 		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
 		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
 
+		ImGui::Checkbox("Spring force to original positions: ", &m_originalPosSpringForce);
 		ImGui::Checkbox("Spring force: ", &m_springActivated);
-		if (m_springActivated)
-			ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
+		
+		ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
 
 		ImGui::Checkbox("Gravity: ", &m_gravityActivated);
 		if (m_gravityActivated)
@@ -203,11 +204,24 @@ void Simulator::doStep()
 		if (m_mouseRepulsion)
 		{	
 			glfwGetCursorPos(m_viewer->window(), &mouseX, &mouseY);
-
+			mousePos = vec2(2.0f * float(mouseX) / float(m_viewer->viewportSize().x) - 1.0f, -2.0f * float(mouseY) / float(m_viewer->viewportSize().y) + 1.0f);
+			//globjects::debug() << mousePos.x << " " << mousePos.y;
 			if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !m_mousePress)
 			{
 				m_mousePress = true;
-				globjects::debug() << "Mouse pressed at " << mouseX << " " << mouseY;
+				globjects::debug() << "Mouse pressed at " << mouseX << " " << m_viewer->viewportSize().y - mouseY;
+				auto mp = m_viewer->modelViewProjectionTransform() * vec4(vec3(m_viewer->scene()->protein()->atoms()[0][0]), 1.0);
+				mp /= mp.w;
+
+				globjects::debug() << "Screen atom " << mp.x << " " << mp.y << " " << mp.z;
+
+				auto a = inverse(m_viewer->modelViewProjectionTransform()) * vec4(mousePos, mp.z, 1.0);
+				a /= a.w;
+
+				globjects::debug() << "world mouse " << a.x << " " << a.y << " " << a.z;
+
+				auto ap = vec4(vec3(m_viewer->scene()->protein()->atoms()[0][0]), 1.0);
+				globjects::debug() << "world atom " << ap.x << " " << ap.y;
 			}
 
 			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && m_mousePress)
@@ -244,11 +258,8 @@ void Simulator::doStep()
 		m_timeStep = (deltaTime / 1000.0) * m_speedMultiplier;
 		//globjects::debug() << m_timeStep;
 
-		simulateProgram->setUniform("mr", m_mouseRepulsion);
-		simulateProgram->setUniform("mousePosPixel", vec2(mouseX, m_viewer->viewportSize().y -mouseY));
-		simulateProgram->setUniform("positionTexture", 0);
-
-		simulateProgram->setUniform("invMVP", m_viewer->modelViewProjectionTransform());
+		simulateProgram->setUniform("MVP", m_viewer->modelViewProjectionTransform());
+		simulateProgram->setUniform("invMVP", inverse(m_viewer->modelViewProjectionTransform()));
 
 		simulateProgram->setUniform("maxIdx", uint(m_vertexCount));
 		simulateProgram->setUniform("selectedAtomId", selectedAtomId);
@@ -265,8 +276,9 @@ void Simulator::doStep()
 
 		simulateProgram->setUniform("gridResolution", m_gridResolution);
 
+		simulateProgram->setUniform("springToOriginalPos", m_originalPosSpringForce);
 		simulateProgram->setUniform("elephantMode", m_mouseRepulsion);
-		simulateProgram->setUniform("mousePosition", mousePos);
+		simulateProgram->setUniform("mousePos", mousePos);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();

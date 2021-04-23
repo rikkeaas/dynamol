@@ -60,6 +60,7 @@ namespace dynamol
 		int m_activeGridBuffer = 0;
 
 		bool m_mouseRepulsion = false;
+		bool m_originalPosSpringForce = false;
 
 		Viewer* m_viewer;
 		bool dummyAnimation = true;
