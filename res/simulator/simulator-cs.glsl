@@ -18,9 +18,13 @@ uniform float springConst;
 uniform float gravityVariable;
 
 uniform bool springToOriginalPos;
+uniform float springToOriginalPosConst;
 
 uniform bool elephantMode;
+uniform float mouseAttractionSpringConst;
+
 uniform vec2 mousePos;
+uniform bool updateOriginalPos;
 
 uniform int gridResolution;
 
@@ -49,6 +53,10 @@ layout (std140, binding=12) buffer updatedGridBuf {GridCell updatedGrid[];};
 layout (std430, binding=13) buffer velocities {vec4 v[];};
 
 uint idx = gl_GlobalInvocationID.x;
+uint id = floatBitsToUint(b[idx].w);
+uint elementId = bitfieldExtract(id,0,8);
+uint residueId = bitfieldExtract(id,8,8);
+uint chainId = bitfieldExtract(id,16,8);
 
 vec4 neighbors[300*7];
 
@@ -130,10 +138,12 @@ void doStep(float deltaTime)
 		}
 	}
 
+	/*
 	uint id = floatBitsToUint(b[idx].w);
 	uint elementId = bitfieldExtract(id,0,8);
 	uint residueId = bitfieldExtract(id,8,8);
 	uint chainId = bitfieldExtract(id,16,8);
+	*/
 
 	if (elephantMode && chainId == selectedAtomId)
 	{
@@ -148,7 +158,7 @@ void doStep(float deltaTime)
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			springForce += springNorm * len * springConst;
+			springForce += springNorm * len * mouseAttractionSpringConst;
 		}
 	}
 
@@ -160,7 +170,7 @@ void doStep(float deltaTime)
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			springForce += springNorm * len * springConst / 10.0;
+			springForce += springNorm * len * springToOriginalPosConst;
 		}
 	}
 
@@ -194,12 +204,13 @@ void main()
 {
 	if (elephantMode)
 	{
+		/*
 		uint id = floatBitsToUint(a[idx].w);
 	
 		uint elementId = bitfieldExtract(id,0,8);
 		uint residueId = bitfieldExtract(id,8,8);
 		uint chainId = bitfieldExtract(id,16,8);
-
+		*/
 		uint atomAttributes;
 		if (selectedAtomId >= 0 && selectedAtomId < maxIdx && chainId == selectedAtomId)
 		{
@@ -214,6 +225,10 @@ void main()
 		
 	}
 
+	if (updateOriginalPos && chainId == selectedAtomId) 
+	{
+		o[idx] = b[idx];
+	}
 
 
 	float tempT = timeStep;

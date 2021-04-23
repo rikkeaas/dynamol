@@ -23,11 +23,6 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 		globjects::debug() << "Disregarding animation for simulation purposes...";
 	}
 
-	/*for (int i = 0; i < timesteps[0].size(); i++)
-	{
-		globjects::debug() << timesteps[0][i].x << ", " << timesteps[0][i].y <<", " << timesteps[0][i].z << ", " << timesteps[0][i].a;
-	}*/
-
 	m_vertices.push_back(Buffer::create());
 	m_vertices.back()->setData(timesteps[0], GL_STREAM_DRAW); // stream draw means changing values in buffer often, static draw means changing only once
 
@@ -165,8 +160,6 @@ void Simulator::doStep()
 	{
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
 
-		ImGui::Checkbox("Elephant mode: ", &m_mouseRepulsion);
-
 		ImGui::SliderInt("Grid resolution", &m_gridResolution, 1, 20);
 
 		ImGui::SliderFloat("Simulation speed", &m_speedMultiplier, 0.0f, 200.0f);
@@ -174,10 +167,15 @@ void Simulator::doStep()
 		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
 		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
 
+		ImGui::Checkbox("Elephant mode: ", &m_mouseRepulsion);
+		if (m_mouseRepulsion)
+			ImGui::SliderFloat("Mouse attraction spring contant: ", &m_mouseSpringConst, 0.0, 1.0);
 		ImGui::Checkbox("Spring force to original positions: ", &m_originalPosSpringForce);
+		if (m_originalPosSpringForce)
+			ImGui::SliderFloat("Original position spring constant: ", &m_returnSpringConst, 0.0, 1.0);
 		ImGui::Checkbox("Spring force: ", &m_springActivated);
-		
-		ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
+		if (m_springActivated)
+			ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
 
 		ImGui::Checkbox("Gravity: ", &m_gravityActivated);
 		if (m_gravityActivated)
@@ -192,6 +190,7 @@ void Simulator::doStep()
 			{
 				m_vertices[i]->setData(timesteps[0], GL_STREAM_DRAW);
 			}
+			m_originalPos->setData(timesteps[0], GL_STREAM_DRAW);
 		}
 
 		ImGui::EndMenu();
@@ -239,6 +238,11 @@ void Simulator::doStep()
 				globjects::debug() << "Mouse release";
 
 			}
+
+			if (glfwGetKey(m_viewer->window(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_viewer->window(), GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
+			{
+				m_updateOriginalPosition = true;
+			}
 		}
 
 		auto simulateProgram = shaderProgram("simulate");
@@ -277,8 +281,12 @@ void Simulator::doStep()
 		simulateProgram->setUniform("gridResolution", m_gridResolution);
 
 		simulateProgram->setUniform("springToOriginalPos", m_originalPosSpringForce);
+		simulateProgram->setUniform("springToOriginalPosConst", m_returnSpringConst);
 		simulateProgram->setUniform("elephantMode", m_mouseRepulsion);
+		simulateProgram->setUniform("mouseAttractionSpringConst", m_mouseSpringConst);
 		simulateProgram->setUniform("mousePos", mousePos);
+
+		simulateProgram->setUniform("updateOriginalPos", m_updateOriginalPosition);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();
@@ -299,6 +307,8 @@ void Simulator::doStep()
 		
 	}
 	m_grids.at(m_activeGridBuffer)->setData(m_emptyNeighborhoodList, GL_STREAM_DRAW);
+
+	m_updateOriginalPosition = false;
 }
 
 

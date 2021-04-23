@@ -31,6 +31,8 @@ namespace dynamol
 		
 
 	private:
+		bool m_updateOriginalPosition = false;
+
 		bool m_mousePress = false;
 		double mouseX = 0.0;
 		double mouseY = 0.0;
@@ -61,6 +63,8 @@ namespace dynamol
 
 		bool m_mouseRepulsion = false;
 		bool m_originalPosSpringForce = false;
+		float m_returnSpringConst = 0.01;
+		float m_mouseSpringConst = 0.01;
 
 		Viewer* m_viewer;
 		bool dummyAnimation = true;
