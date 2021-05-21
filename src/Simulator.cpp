@@ -40,7 +40,7 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 	m_zbounds = vec2(minbounds.z, maxounds.z);
 	
 	m_originalPos = Buffer::create();
-	m_originalPos->setStorage(timesteps[0], gl::GL_NONE_BIT);
+	m_originalPos->setData(timesteps[0], GL_STATIC_DRAW);
 
 	m_timeStep = 0.0;
 
@@ -161,13 +161,13 @@ void Simulator::doStep()
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
 
 		ImGui::SliderInt("Grid resolution", &m_gridResolution, 1, 20);
-
+		ImGui::SliderFloat("Repulsion force strength", &m_repulsionForce, 0.0, 2.0);
 		ImGui::SliderFloat("Simulation speed", &m_speedMultiplier, 0.0f, 200.0f);
 		ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100, 450.0);
 		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
 		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
 
-		ImGui::Checkbox("Elephant mode: ", &m_mouseRepulsion);
+		ImGui::Checkbox("Mouse interaction: ", &m_mouseRepulsion);
 		if (m_mouseRepulsion)
 			ImGui::SliderFloat("Mouse attraction spring contant: ", &m_mouseSpringConst, 0.0, 1.0);
 		ImGui::Checkbox("Spring force to original positions: ", &m_originalPosSpringForce);
@@ -190,7 +190,7 @@ void Simulator::doStep()
 			{
 				m_vertices[i]->setData(timesteps[0], GL_STREAM_DRAW);
 			}
-			m_originalPos->setData(timesteps[0], GL_STREAM_DRAW);
+			m_originalPos->setData(timesteps[0], GL_STATIC_DRAW);
 		}
 
 		ImGui::EndMenu();
@@ -278,6 +278,7 @@ void Simulator::doStep()
 		simulateProgram->setUniform("springConst", m_springConst);
 		simulateProgram->setUniform("gravityVariable", m_gravity);
 
+		simulateProgram->setUniform("repulsionStrength", m_repulsionForce);
 		simulateProgram->setUniform("gridResolution", m_gridResolution);
 
 		simulateProgram->setUniform("springToOriginalPos", m_originalPosSpringForce);

@@ -301,6 +301,7 @@ SphereRenderer::SphereRenderer(Viewer* viewer) : Renderer(viewer)
 			m_bumpTextures.push_back(std::move(texture));
 	}
 
+
 	m_sphereFramebuffer = Framebuffer::create();
 	m_sphereFramebuffer->attachTexture(GL_COLOR_ATTACHMENT1, m_spherePositionTexture.get());
 	m_sphereFramebuffer->attachTexture(GL_COLOR_ATTACHMENT0, m_sphereNormalTexture.get());
@@ -745,8 +746,9 @@ void SphereRenderer::display()
 	// List generation pass
 	//////////////////////////////////////////////////////////////////////////
 	const uint intersectionClearValue = 1;
-	m_intersectionBuffer->clearSubData(GL_R32UI, 0, sizeof(uint), GL_RED_INTEGER, GL_UNSIGNED_INT, &intersectionClearValue);
 
+	m_intersectionBuffer->clearSubData(GL_R32UI, 0, sizeof(uint), GL_RED_INTEGER, GL_UNSIGNED_INT, &intersectionClearValue);
+	
 	const uint offsetClearValue = 0;
 	m_offsetTexture->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, &offsetClearValue);
 
@@ -1119,7 +1121,9 @@ void SphereRenderer::display()
 
 	m_sphereFramebuffer->bind();
 	m_spherePositionTexture->bindActive(0);
+	m_elementColorsRadii->bindBase(GL_UNIFORM_BUFFER, 7);
 	m_simulator->simulate();
+	m_elementColorsRadii->unbind(GL_UNIFORM_BUFFER);
 	m_spherePositionTexture->unbindActive(0);
 	m_sphereFramebuffer->unbind();
 

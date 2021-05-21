@@ -56,6 +56,7 @@ namespace dynamol
 			glm::vec4 atoms[300];
 		};
 
+		float m_repulsionForce = 0.01;
 		int m_gridResolution = 7; // Same for x,y,z
 		std::vector<GridCell> m_emptyNeighborhoodList;
 		std::vector<std::unique_ptr<globjects::Buffer>> m_grids;
