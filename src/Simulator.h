@@ -31,12 +31,15 @@ namespace dynamol
 		
 
 	private:
+		bool m_selectingFocus = false;
+
 		bool m_updateOriginalPosition = false;
 
 		bool m_mousePress = false;
 		double mouseX = 0.0;
 		double mouseY = 0.0;
-		glm::uint selectedAtomId;
+		glm::uint selectedAtomId = 127;
+		glm::vec3 selectedAtomPos;
 
 		glm::vec2 m_xbounds = glm::vec2(0.0, 450.0);
 		glm::vec2 m_ybounds = glm::vec2(0.0, 450.0);
@@ -66,6 +69,10 @@ namespace dynamol
 		bool m_originalPosSpringForce = false;
 		float m_returnSpringConst = 0.01;
 		float m_mouseSpringConst = 0.01;
+
+		bool m_viewDistortion = false;
+		float m_viewDistortionStrength = 0.01;
+		float m_distortionDistCutOff = 5;
 
 		Viewer* m_viewer;
 		bool dummyAnimation = true;

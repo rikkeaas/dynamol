@@ -2,8 +2,10 @@
 
 uniform uint maxIdx;
 uniform uint selectedAtomId;
+uniform vec3 selectedAtomPos;
 
-uniform mat4 invMVP; 
+uniform mat4 invMV;
+uniform mat4 invMVP;
 uniform mat4 MVP;
 
 uniform float timeStep;
@@ -29,6 +31,10 @@ uniform bool updateOriginalPos;
 uniform float repulsionStrength;
 uniform int gridResolution;
 
+uniform bool viewDistortion = true;
+uniform float viewDistortionStrength = 2;
+uniform float distortionDistCutOff;
+
 layout (local_size_x = 1) in;
 
 struct Item
@@ -51,7 +57,7 @@ struct GridCell
 	vec4 atoms[300];
 };
 
-layout(std140, binding = 7) uniform elementBlock { Element elements[32]; };
+layout (std140, binding=7) uniform elementBlock { Element elements[32]; };
 layout (std430, binding=8) buffer atoms {vec4 a[];};
 layout (std430, binding=9) buffer prevAtoms {vec4 b[];};
 layout (std430, binding=10) buffer originalAtoms {vec4 o[];};
@@ -129,7 +135,7 @@ void doStep(float deltaTime)
 {
 	// Spring force between neighbors
 	// --------------------------------------------------------------------
-	vec3 springForce = vec3(0.0);
+	vec3 neighborSpringForce = vec3(0.0);
 	if (springForceActive && idx != 0)
 	{
 		
@@ -139,7 +145,7 @@ void doStep(float deltaTime)
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			springForce += springNorm * len * springConst;
+			neighborSpringForce += springNorm * len * springConst;
 		}
 	}
 	if (springForceActive && idx < maxIdx-1)
@@ -150,13 +156,14 @@ void doStep(float deltaTime)
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			springForce += springNorm * len * springConst;
+			neighborSpringForce += springNorm * len * springConst;
 		}
 	}
 	// --------------------------------------------------------------------
 
 	// Spring force towards mouse pointer
 	// --------------------------------------------------------------------
+	vec3 mouseSpringForce = vec3(0.0);
 	if (elephantMode && chainId == selectedAtomId)
 	{
 		vec4 screenAtom = MVP * vec4(b[idx].xyz,1.0);
@@ -170,13 +177,14 @@ void doStep(float deltaTime)
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			springForce += springNorm * len * mouseAttractionSpringConst;
+			mouseSpringForce = springNorm * len * mouseAttractionSpringConst;
 		}
 	}
 	// --------------------------------------------------------------------
 
 	// Spring force to atoms original position
 	// --------------------------------------------------------------------
+	vec3 returnSpringForce = vec3(0.0);
 	if (springToOriginalPos)
 	{
 		vec3 springAxies = b[idx].xyz - o[idx].xyz;
@@ -185,7 +193,7 @@ void doStep(float deltaTime)
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			springForce += springNorm * len * springToOriginalPosConst;
+			returnSpringForce = springNorm * len * springToOriginalPosConst;
 		}
 	}
 	// --------------------------------------------------------------------
@@ -213,17 +221,48 @@ void doStep(float deltaTime)
 		vec3 fDir = normalize(b[idx].xyz - cell.atoms[i].xyz);
 		repulsionForce += repulsionStrength * fDir / pow((distance(b[idx].xyz, cell.atoms[i].xyz)),2);
 	}
-
-	
-	
-
 	// --------------------------------------------------------------------
 
+	// Viewing distortion
+	// --------------------------------------------------------------------
+	vec3 viewDistortionForce = vec3(0.0);
+	if (viewDistortion && elephantMode && chainId != selectedAtomId && selectedAtomId != 127)
+	{
+		vec4 globalCam = invMV * vec4(0.0,0.0,1.0,1.0);
+		globalCam = globalCam / globalCam.w;
+		
+		if (distance(globalCam.xyz, selectedAtomPos) >= distance(globalCam.xyz, b[idx].xyz))
+		{
+			vec3 viewSelectedAxis = selectedAtomPos - globalCam.xyz;
 
+			vec3 viewThisVector = b[idx].xyz - globalCam.xyz;
 
+			vec3 planeNormal = cross(viewSelectedAxis, viewThisVector);
+			vec3 distortionAxis = normalize(cross(planeNormal, viewSelectedAxis));
 
-	vec3 nextPos = b[idx].xyz + (v[idx].xyz - springForce - gravityVariable*vec3(0.0, 1.0, 0.0) + repulsionForce) * deltaTime;
+			float distortionDist = dot(viewThisVector, distortionAxis);
 
+			if (distortionDist <= distortionDistCutOff)
+			{
+				viewDistortionForce = viewDistortionStrength * distortionAxis / pow(distortionDist,2);
+				mouseSpringForce = vec3(0.0);
+				returnSpringForce = vec3(0.0);
+				repulsionForce = vec3(0.0);
+			}
+		}
+	}
+	// --------------------------------------------------------------------
+
+	vec3 nextPos;
+	if (viewDistortion && chainId == selectedAtomId)
+	{
+		nextPos = selectedAtomPos;
+	}
+	else 
+	{
+		vec3 springForce = neighborSpringForce + mouseSpringForce + returnSpringForce;
+		nextPos = b[idx].xyz + (v[idx].xyz - springForce - gravityVariable*vec3(0.0, 1.0, 0.0) + repulsionForce + viewDistortionForce) * deltaTime;
+	}
 	if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
 	else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
 	else if (checkBounds(nextPos.y, yBounds.x, vec3(0.0,1.0,0.0))) nextPos.y = yBounds.x;
@@ -239,6 +278,7 @@ void doStep(float deltaTime)
 
 	if (fracTimePassed >= 1) 
 	{
+		vec3 springForce = neighborSpringForce + mouseSpringForce + returnSpringForce;
 		v[idx] = v[idx]*timeDecay - vec4(springForce,0.0) - vec4(gravityVariable*vec3(0.0, 1.0, 0.0), 0.0) + vec4(repulsionForce,0.0);
 	}
 }
@@ -277,7 +317,8 @@ void main()
 	doStep(tempT);
 	
 	
-	
+	if (repulsionStrength == 0.0) return; 
+
 	float radius = elements[elementId].radius;
 	int[27] alreadyVisited;
 	int alreadyVisitedIdx = 0;

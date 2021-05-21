@@ -170,12 +170,21 @@ void Simulator::doStep()
 		ImGui::Checkbox("Mouse interaction: ", &m_mouseRepulsion);
 		if (m_mouseRepulsion)
 			ImGui::SliderFloat("Mouse attraction spring contant: ", &m_mouseSpringConst, 0.0, 1.0);
+		
 		ImGui::Checkbox("Spring force to original positions: ", &m_originalPosSpringForce);
 		if (m_originalPosSpringForce)
 			ImGui::SliderFloat("Original position spring constant: ", &m_returnSpringConst, 0.0, 1.0);
+		
 		ImGui::Checkbox("Spring force: ", &m_springActivated);
 		if (m_springActivated)
 			ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
+
+		ImGui::Checkbox("View distortion: ", &m_viewDistortion);
+		if (m_viewDistortion)
+		{
+			ImGui::SliderFloat("View Distortion Strength: ", &m_viewDistortionStrength, 0.0, 3.0);
+			ImGui::SliderFloat("Distortion Distance Cut Off: ", &m_distortionDistCutOff, 0.0, 15.0);
+		}
 
 		ImGui::Checkbox("Gravity: ", &m_gravityActivated);
 		if (m_gravityActivated)
@@ -200,7 +209,12 @@ void Simulator::doStep()
 	{
 		vec2 mousePos = vec2(0.0);
 		
-		if (m_mouseRepulsion)
+		//if (glfwGetKey(m_viewer->window(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_viewer->window(), GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
+		//{
+
+		//}
+
+		if (m_mouseRepulsion && selectedAtomId == 127)
 		{	
 			glfwGetCursorPos(m_viewer->window(), &mouseX, &mouseY);
 			mousePos = vec2(2.0f * float(mouseX) / float(m_viewer->viewportSize().x) - 1.0f, -2.0f * float(mouseY) / float(m_viewer->viewportSize().y) + 1.0f);
@@ -227,16 +241,21 @@ void Simulator::doStep()
 			{
 				
 				vec4 data;
+				glReadBuffer(gl::GLenum::GL_COLOR_ATTACHMENT0);
 				glReadPixels(mouseX, m_viewer->viewportSize().y - mouseY, 1, 1, GL_RGBA, GL_FLOAT, &data);
 				uint id = floatBitsToUint(data.w);
 				uint elementId = bitfieldExtract(id, 0, 8);
 				uint residueId = bitfieldExtract(id, 8, 8);
 				selectedAtomId = bitfieldExtract(id, 16, 8);
-				globjects::debug() << elementId << " " << residueId << " " << selectedAtomId;
+				globjects::debug() << "Selected atom " << elementId << " " << residueId << " " << selectedAtomId;
 
 				m_mousePress = false;
 				globjects::debug() << "Mouse release";
-
+				globjects::debug() << "Data before " << data.x << " " << data.y << " " << data.z << " " << data.w;
+				glReadBuffer(gl::GLenum::GL_COLOR_ATTACHMENT1);
+				glReadPixels(mouseX, m_viewer->viewportSize().y - mouseY, 1, 1, GL_RGBA, GL_FLOAT, &data);
+				selectedAtomPos = vec3(data);
+				globjects::debug() << "Data after " << data.x << " " << data.y << " " << data.z << " " << data.w;
 			}
 
 			if (glfwGetKey(m_viewer->window(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_viewer->window(), GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
@@ -264,9 +283,11 @@ void Simulator::doStep()
 
 		simulateProgram->setUniform("MVP", m_viewer->modelViewProjectionTransform());
 		simulateProgram->setUniform("invMVP", inverse(m_viewer->modelViewProjectionTransform()));
+		simulateProgram->setUniform("invMV", inverse(m_viewer->modelViewTransform()));
 
 		simulateProgram->setUniform("maxIdx", uint(m_vertexCount));
 		simulateProgram->setUniform("selectedAtomId", selectedAtomId);
+		simulateProgram->setUniform("selectedAtomPos", selectedAtomPos);
 
 		simulateProgram->setUniform("timeStep", m_timeStep);
 		simulateProgram->setUniform("fracTimePassed", m_fracTimePassed);
@@ -286,6 +307,10 @@ void Simulator::doStep()
 		simulateProgram->setUniform("elephantMode", m_mouseRepulsion);
 		simulateProgram->setUniform("mouseAttractionSpringConst", m_mouseSpringConst);
 		simulateProgram->setUniform("mousePos", mousePos);
+
+		simulateProgram->setUniform("viewDistortion", m_viewDistortion);
+		simulateProgram->setUniform("viewDistortionStrength", m_viewDistortionStrength);
+		simulateProgram->setUniform("distortionDistCutOff", m_distortionDistCutOff);
 
 		simulateProgram->setUniform("updateOriginalPos", m_updateOriginalPosition);
 
