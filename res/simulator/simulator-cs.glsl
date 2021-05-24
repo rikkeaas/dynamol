@@ -41,6 +41,7 @@ uniform float distortionDistCutOff;
 uniform float stretchForceStrength;
 uniform float xStretch;
 uniform float yStretch;
+uniform float zStretch;
 
 layout (local_size_x = 1) in;
 
@@ -222,8 +223,8 @@ void doStep(float deltaTime)
 	}
 	// --------------------------------------------------------------------
 
-	// --------------------------------------------------------------------
 	// Stretching
+	// --------------------------------------------------------------------
 	vec3 stretchForce = vec3(0.0);
 
 	if (stretchForceStrength > 0.0)
@@ -271,6 +272,32 @@ void doStep(float deltaTime)
 				stretchedPos = o[idx].xyz + vec3(0.0, yStretch, 0.0);
 				springAxies = vec3(0.0,-1.0,0.0);
 				scaleFactor = o[idx].y - centerY;
+			}
+		
+			float len = distance(b[idx].xyz, stretchedPos);
+	
+			if (len != 0.0) 
+			{
+				stretchForce += springAxies * stretchForceStrength * len * scaleFactor;
+			}
+		}
+		if (zStretch != 0.0)
+		{
+			vec3 stretchedPos;
+			vec3 springAxies;
+			float scaleFactor;
+			float centerZ = (zBounds.x + zBounds.y)/2;
+			if (o[idx].z < centerZ)
+			{
+				stretchedPos = o[idx].xyz - vec3(0.0, 0.0, zStretch);
+				springAxies  = vec3(0.0,0.0,1.0);
+				scaleFactor = centerZ - o[idx].z;
+			}
+			else
+			{
+				stretchedPos = o[idx].xyz + vec3(0.0, 0.0, zStretch);
+				springAxies = vec3(0.0,0.0,-1.0);
+				scaleFactor = o[idx].z - centerZ;
 			}
 		
 			float len = distance(b[idx].xyz, stretchedPos);
@@ -332,7 +359,7 @@ void doStep(float deltaTime)
 	else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
 
 
-	uint atomAttributes = elementId | (residueId << 8) | (chainId << 16);
+	//uint atomAttributes = elementId | (residueId << 8) | (chainId << 16);
 
 	//a[idx] = vec4(nextPos, uintBitsToFloat(atomAttributes));
 	a[idx] = vec4(nextPos, b[idx].w);

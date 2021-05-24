@@ -37,7 +37,7 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 
 	m_xbounds = vec2(minbounds.x- 50, maxounds.x + 50);
 	m_ybounds = vec2(minbounds.y- 50, maxounds.y + 50);
-	m_zbounds = vec2(minbounds.z - 10, maxounds.z - 10);
+	m_zbounds = vec2(minbounds.z - 30, maxounds.z + 30);
 	
 	m_originalPos = Buffer::create();
 	m_originalPos->setData(timesteps[0], GL_STATIC_DRAW);
@@ -169,6 +169,7 @@ void Simulator::doStep()
 		ImGui::SliderFloat("Strength of stretch force", &m_stretchStrength, 0.0, 2.0);
 		ImGui::SliderFloat("Stretch along x-axis", &m_xStretch, 0.0, 100.0);
 		ImGui::SliderFloat("Stretch along y-axis", &m_yStretch, 0.0, 100.0);
+		ImGui::SliderFloat("Stretch along z-axis", &m_zStretch, 0.0, 100.0);
 
 		if (ImGui::Button("Reset atom positions"))
 		{
@@ -206,7 +207,8 @@ void Simulator::doStep()
 				uint id = floatBitsToUint(data.w);
 				uint elementId = bitfieldExtract(id, 0, 8);
 				uint residueId = bitfieldExtract(id, 8, 8);
-				selectedAtomId = bitfieldExtract(id, 16, 8);
+				uint newSelectedAtomId = bitfieldExtract(id, 16, 8);
+				selectedAtomId = newSelectedAtomId == selectedAtomId ? m_vertexCount : newSelectedAtomId;
 				m_mousePress = false;
 			}
 			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && m_viewDistortion && m_mousePress && selectedAtomId >= m_vertexCount)
@@ -291,6 +293,7 @@ void Simulator::doStep()
 		simulateProgram->setUniform("stretchForceStrength", m_stretchStrength);
 		simulateProgram->setUniform("xStretch", m_xStretch);
 		simulateProgram->setUniform("yStretch", m_yStretch);
+		simulateProgram->setUniform("zStretch", m_zStretch);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();

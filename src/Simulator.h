@@ -102,5 +102,6 @@ namespace dynamol
 		float m_stretchStrength = 0.01;
 		float m_xStretch = 0.0;
 		float m_yStretch = 0.0;
+		float m_zStretch = 0.0;
 	};
 }
