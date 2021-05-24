@@ -37,7 +37,7 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 
 	m_xbounds = vec2(minbounds.x- 50, maxounds.x + 50);
 	m_ybounds = vec2(minbounds.y- 50, maxounds.y + 50);
-	m_zbounds = vec2(minbounds.z, maxounds.z);
+	m_zbounds = vec2(minbounds.z - 10, maxounds.z - 10);
 	
 	m_originalPos = Buffer::create();
 	m_originalPos->setData(timesteps[0], GL_STATIC_DRAW);
@@ -57,36 +57,6 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 
 
 	m_emptyNeighborhoodList.resize(m_gridResolution * m_gridResolution * m_gridResolution);
-	//for (int i = 0; i < m_neighborhoodList.size(); i++)
-	//{
-	//	m_neighborhoodList[i] = { {vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0),vec4(0.0)}, vec4(0.0) };
-	//}
-
-	/*
-	for (int i = 0; i < timesteps[0].size(); i++)
-	{
-		float normX = (timesteps[0][i].x - m_xbounds[0]) / (m_xbounds[1]+1 - m_xbounds[0]);
-		float normY = (timesteps[0][i].y - m_ybounds[0]) / (m_ybounds[1]+1 - m_ybounds[0]);
-		float normZ = (timesteps[0][i].z - m_zbounds[0]) / (m_zbounds[1]+1 - m_zbounds[0]);
-
-		int idxX = int(normX * m_gridResolution);
-		int idxY = int(normY * m_gridResolution);
-		int idxZ = int(normZ * m_gridResolution);
-
-		int idx = idxX + m_gridResolution * (idxY + m_gridResolution * idxZ);
-		globjects::debug() << idx;
-		if (m_neighborhoodList[idx].count.x < 300)
-		{
-			m_neighborhoodList[idx].atoms[int(m_neighborhoodList[idx].count.x)] = timesteps[0][i];
-			m_neighborhoodList[idx].count.x += 1;
-			globjects::debug() << m_neighborhoodList[idx].count.x;
-		}
-		else
-		{
-			globjects::debug() << "Full list..";
-		}
-	}
-	*/
 
 	m_grids.push_back(Buffer::create());
 	m_grids.back()->setData(m_emptyNeighborhoodList, GL_STREAM_DRAW);
@@ -155,20 +125,20 @@ void Simulator::simulate()
 
 void Simulator::doStep()
 {
-	m_explosion->display();
-	if (ImGui::BeginMenu("Simulator"))
+	if (ImGui::Begin("Simulator"))
 	{
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
 
 		ImGui::SliderInt("Grid resolution", &m_gridResolution, 1, 20);
 		ImGui::SliderFloat("Repulsion force strength", &m_repulsionForce, 0.0, 2.0);
 		ImGui::SliderFloat("Simulation speed", &m_speedMultiplier, 0.0f, 200.0f);
+		ImGui::SliderFloat("Decay of velocity with time: ", &m_timeDecay, 0.9, 1.1);
 		ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100, 450.0);
 		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
 		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
 
-		ImGui::Checkbox("Mouse interaction: ", &m_mouseRepulsion);
-		if (m_mouseRepulsion)
+		ImGui::Checkbox("Mouse interaction: ", &m_mouseAttraction);
+		if (m_mouseAttraction)
 			ImGui::SliderFloat("Mouse attraction spring contant: ", &m_mouseSpringConst, 0.0, 1.0);
 		
 		ImGui::Checkbox("Spring force to original positions: ", &m_originalPosSpringForce);
@@ -184,6 +154,10 @@ void Simulator::doStep()
 		{
 			ImGui::SliderFloat("View Distortion Strength: ", &m_viewDistortionStrength, 0.0, 3.0);
 			ImGui::SliderFloat("Distortion Distance Cut Off: ", &m_distortionDistCutOff, 0.0, 15.0);
+			if (ImGui::Button("Remove selection"))
+			{
+				selectedAtomId = m_vertexCount;
+			}
 		}
 
 		ImGui::Checkbox("Gravity: ", &m_gravityActivated);
@@ -191,6 +165,10 @@ void Simulator::doStep()
 			ImGui::SliderFloat("Gravity multiplier: ", &m_gravity, 0.0, 5.0);
 		else
 			m_gravity = 0.0;
+
+		ImGui::SliderFloat("Strength of stretch force", &m_stretchStrength, 0.0, 2.0);
+		ImGui::SliderFloat("Stretch along x-axis", &m_xStretch, 0.0, 100.0);
+		ImGui::SliderFloat("Stretch along y-axis", &m_yStretch, 0.0, 100.0);
 
 		if (ImGui::Button("Reset atom positions"))
 		{
@@ -204,42 +182,24 @@ void Simulator::doStep()
 
 		ImGui::EndMenu();
 	}
+	m_explosion->display();
 
 	if (dummyAnimation)
 	{
 		vec2 mousePos = vec2(0.0);
-		
-		//if (glfwGetKey(m_viewer->window(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_viewer->window(), GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
-		//{
 
-		//}
-
-		if (m_mouseRepulsion && selectedAtomId == 127)
+		if (m_mouseAttraction || m_viewDistortion)
 		{	
 			glfwGetCursorPos(m_viewer->window(), &mouseX, &mouseY);
 			mousePos = vec2(2.0f * float(mouseX) / float(m_viewer->viewportSize().x) - 1.0f, -2.0f * float(mouseY) / float(m_viewer->viewportSize().y) + 1.0f);
-			//globjects::debug() << mousePos.x << " " << mousePos.y;
+			
 			if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !m_mousePress)
 			{
 				m_mousePress = true;
-				globjects::debug() << "Mouse pressed at " << mouseX << " " << m_viewer->viewportSize().y - mouseY;
-				auto mp = m_viewer->modelViewProjectionTransform() * vec4(vec3(m_viewer->scene()->protein()->atoms()[0][0]), 1.0);
-				mp /= mp.w;
-
-				globjects::debug() << "Screen atom " << mp.x << " " << mp.y << " " << mp.z;
-
-				auto a = inverse(m_viewer->modelViewProjectionTransform()) * vec4(mousePos, mp.z, 1.0);
-				a /= a.w;
-
-				globjects::debug() << "world mouse " << a.x << " " << a.y << " " << a.z;
-
-				auto ap = vec4(vec3(m_viewer->scene()->protein()->atoms()[0][0]), 1.0);
-				globjects::debug() << "world atom " << ap.x << " " << ap.y;
 			}
 
-			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && m_mousePress)
+			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && !m_viewDistortion && m_mousePress)
 			{
-				
 				vec4 data;
 				glReadBuffer(gl::GLenum::GL_COLOR_ATTACHMENT0);
 				glReadPixels(mouseX, m_viewer->viewportSize().y - mouseY, 1, 1, GL_RGBA, GL_FLOAT, &data);
@@ -247,15 +207,26 @@ void Simulator::doStep()
 				uint elementId = bitfieldExtract(id, 0, 8);
 				uint residueId = bitfieldExtract(id, 8, 8);
 				selectedAtomId = bitfieldExtract(id, 16, 8);
-				globjects::debug() << "Selected atom " << elementId << " " << residueId << " " << selectedAtomId;
-
 				m_mousePress = false;
-				globjects::debug() << "Mouse release";
-				globjects::debug() << "Data before " << data.x << " " << data.y << " " << data.z << " " << data.w;
-				glReadBuffer(gl::GLenum::GL_COLOR_ATTACHMENT1);
+			}
+			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && m_viewDistortion && m_mousePress && selectedAtomId >= m_vertexCount)
+			{
+				vec4 data;
+				glReadBuffer(gl::GLenum::GL_COLOR_ATTACHMENT0);
 				glReadPixels(mouseX, m_viewer->viewportSize().y - mouseY, 1, 1, GL_RGBA, GL_FLOAT, &data);
-				selectedAtomPos = vec3(data);
-				globjects::debug() << "Data after " << data.x << " " << data.y << " " << data.z << " " << data.w;
+				uint id = floatBitsToUint(data.w);
+				uint elementId = bitfieldExtract(id, 0, 8);
+				uint residueId = bitfieldExtract(id, 8, 8);
+				uint newSelectedAtomId = bitfieldExtract(id, 16, 8);
+				
+				if (newSelectedAtomId < m_vertexCount)
+				{
+					selectedAtomId = newSelectedAtomId;
+					glReadBuffer(gl::GLenum::GL_COLOR_ATTACHMENT1);
+					glReadPixels(mouseX, m_viewer->viewportSize().y - mouseY, 1, 1, GL_RGBA, GL_FLOAT, &data);
+					selectedAtomPos = vec3(data);
+				}
+				m_mousePress = false;
 			}
 
 			if (glfwGetKey(m_viewer->window(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_viewer->window(), GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
@@ -269,7 +240,6 @@ void Simulator::doStep()
 		m_vertices.at(m_activeBuffer)->bindBase(GL_SHADER_STORAGE_BUFFER, 8);
 		m_vertices.at((m_activeBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 9);
 		m_originalPos->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
-		//m_randomness->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
 		m_grids.at(m_activeGridBuffer)->bindBase(GL_SHADER_STORAGE_BUFFER, 11);
 		m_grids.at((m_activeGridBuffer + 1) % 2)->bindBase(GL_SHADER_STORAGE_BUFFER, 12);
 		m_explosion->bindVelocity();
@@ -279,24 +249,27 @@ void Simulator::doStep()
 		m_prevTime = newTime;
 
 		m_timeStep = (deltaTime / 1000.0) * m_speedMultiplier;
-		//globjects::debug() << m_timeStep;
-
-		simulateProgram->setUniform("MVP", m_viewer->modelViewProjectionTransform());
-		simulateProgram->setUniform("invMVP", inverse(m_viewer->modelViewProjectionTransform()));
-		simulateProgram->setUniform("invMV", inverse(m_viewer->modelViewTransform()));
 
 		simulateProgram->setUniform("maxIdx", uint(m_vertexCount));
 		simulateProgram->setUniform("selectedAtomId", selectedAtomId);
 		simulateProgram->setUniform("selectedAtomPos", selectedAtomPos);
 
+		simulateProgram->setUniform("MVP", m_viewer->modelViewProjectionTransform());
+		simulateProgram->setUniform("invMVP", inverse(m_viewer->modelViewProjectionTransform()));
+		simulateProgram->setUniform("invMV", inverse(m_viewer->modelViewTransform()));
+
 		simulateProgram->setUniform("timeStep", m_timeStep);
 		simulateProgram->setUniform("fracTimePassed", m_fracTimePassed);
-		simulateProgram->setUniform("timeDecay", m_explosion->getTimeDecay());
+
+		simulateProgram->setUniform("timeDecay", m_timeDecay);
+
 		simulateProgram->setUniform("xBounds", m_xbounds);
 		simulateProgram->setUniform("yBounds", m_ybounds);
 		simulateProgram->setUniform("zBounds", m_zbounds);
+
 		simulateProgram->setUniform("springForceActive", m_springActivated);
 		simulateProgram->setUniform("springConst", m_springConst);
+
 		simulateProgram->setUniform("gravityVariable", m_gravity);
 
 		simulateProgram->setUniform("repulsionStrength", m_repulsionForce);
@@ -304,7 +277,8 @@ void Simulator::doStep()
 
 		simulateProgram->setUniform("springToOriginalPos", m_originalPosSpringForce);
 		simulateProgram->setUniform("springToOriginalPosConst", m_returnSpringConst);
-		simulateProgram->setUniform("elephantMode", m_mouseRepulsion);
+
+		simulateProgram->setUniform("mouseAttraction", m_mouseAttraction);
 		simulateProgram->setUniform("mouseAttractionSpringConst", m_mouseSpringConst);
 		simulateProgram->setUniform("mousePos", mousePos);
 
@@ -313,6 +287,10 @@ void Simulator::doStep()
 		simulateProgram->setUniform("distortionDistCutOff", m_distortionDistCutOff);
 
 		simulateProgram->setUniform("updateOriginalPos", m_updateOriginalPosition);
+
+		simulateProgram->setUniform("stretchForceStrength", m_stretchStrength);
+		simulateProgram->setUniform("xStretch", m_xStretch);
+		simulateProgram->setUniform("yStretch", m_yStretch);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();

@@ -15,12 +15,10 @@ namespace dynamol
 		virtual void display();
 		void bindVelocity();
 		void releaseVelocity();
-		float getTimeDecay();
 
 	private:
 		Viewer* m_viewer;
 
-		float m_timeDecay = 1.0;
 		float m_speed = 10.0;
 
 		float m_x = 0.0;

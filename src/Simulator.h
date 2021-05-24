@@ -44,11 +44,13 @@ namespace dynamol
 		glm::vec2 m_xbounds = glm::vec2(0.0, 450.0);
 		glm::vec2 m_ybounds = glm::vec2(0.0, 450.0);
 		glm::vec2 m_zbounds = glm::vec2(0.0, 450.0);
+
 		float m_springConst = 0.001;
 		bool m_springActivated = false;
 		float m_gravity = 0.0;
 		bool m_gravityActivated = false;
 		float m_speedMultiplier = 1.0;
+		float m_timeDecay = 0.95;
 		float m_fracTimePassed = 0.0;
 		std::chrono::steady_clock::time_point m_prevTime;
 
@@ -65,7 +67,7 @@ namespace dynamol
 		std::vector<std::unique_ptr<globjects::Buffer>> m_grids;
 		int m_activeGridBuffer = 0;
 
-		bool m_mouseRepulsion = false;
+		bool m_mouseAttraction = false;
 		bool m_originalPosSpringForce = false;
 		float m_returnSpringConst = 0.01;
 		float m_mouseSpringConst = 0.01;
@@ -94,5 +96,11 @@ namespace dynamol
 		float m_timeStep;
 
 		std::unique_ptr<globjects::Texture> m_colorTexture = nullptr;
+
+		bool m_selectingAtoms;
+
+		float m_stretchStrength = 0.01;
+		float m_xStretch = 0.0;
+		float m_yStretch = 0.0;
 	};
 }

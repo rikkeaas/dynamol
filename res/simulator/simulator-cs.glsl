@@ -4,28 +4,31 @@ uniform uint maxIdx;
 uniform uint selectedAtomId;
 uniform vec3 selectedAtomPos;
 
-uniform mat4 invMV;
-uniform mat4 invMVP;
 uniform mat4 MVP;
+uniform mat4 invMVP;
+uniform mat4 invMV;
 
 uniform float timeStep;
 uniform float fracTimePassed;
 
 uniform float timeDecay;
+
 uniform vec2 xBounds;
 uniform vec2 yBounds;
 uniform vec2 zBounds;
+
 uniform bool springForceActive;
 uniform float springConst;
+
 uniform float gravityVariable;
 
 uniform bool springToOriginalPos;
 uniform float springToOriginalPosConst;
 
-uniform bool elephantMode;
+uniform bool mouseAttraction;
 uniform float mouseAttractionSpringConst;
-
 uniform vec2 mousePos;
+
 uniform bool updateOriginalPos;
 
 uniform float repulsionStrength;
@@ -35,15 +38,11 @@ uniform bool viewDistortion = true;
 uniform float viewDistortionStrength = 2;
 uniform float distortionDistCutOff;
 
-layout (local_size_x = 1) in;
+uniform float stretchForceStrength;
+uniform float xStretch;
+uniform float yStretch;
 
-struct Item
-{
-  float offset;
-  float rand;
-  float unused1;
-  float unused;
-};
+layout (local_size_x = 1) in;
 
 struct Element
 {
@@ -164,7 +163,7 @@ void doStep(float deltaTime)
 	// Spring force towards mouse pointer
 	// --------------------------------------------------------------------
 	vec3 mouseSpringForce = vec3(0.0);
-	if (elephantMode && chainId == selectedAtomId)
+	if (mouseAttraction && chainId == selectedAtomId)
 	{
 		vec4 screenAtom = MVP * vec4(b[idx].xyz,1.0);
 		vec2 screenAtomXY = screenAtom.xy / screenAtom.w;
@@ -223,10 +222,71 @@ void doStep(float deltaTime)
 	}
 	// --------------------------------------------------------------------
 
+	// --------------------------------------------------------------------
+	// Stretching
+	vec3 stretchForce = vec3(0.0);
+
+	if (stretchForceStrength > 0.0)
+	{
+		if (xStretch != 0.0)
+		{
+			vec3 stretchedPos;
+			vec3 springAxies;
+			float scaleFactor;
+			float centerX = (xBounds.x + xBounds.y)/2;
+			if (o[idx].x < centerX)
+			{
+				stretchedPos = o[idx].xyz - vec3(xStretch, 0.0, 0.0);
+				springAxies  = vec3(1.0,0.0,0.0);
+				scaleFactor = centerX - o[idx].x;
+			}
+			else
+			{
+				stretchedPos = o[idx].xyz + vec3(xStretch,0.0,0.0);
+				springAxies = vec3(-1.0,0.0,0.0);
+				scaleFactor = o[idx].x- centerX;
+			}
+		
+			float len = distance(b[idx].xyz, stretchedPos);
+	
+			if (len != 0.0) 
+			{
+				stretchForce = springAxies * stretchForceStrength * len * scaleFactor;
+			}
+		}
+		if (yStretch != 0.0)
+		{
+			vec3 stretchedPos;
+			vec3 springAxies;
+			float scaleFactor;
+			float centerY = (yBounds.x + yBounds.y)/2;
+			if (o[idx].y < centerY)
+			{
+				stretchedPos = o[idx].xyz - vec3(0.0, yStretch, 0.0);
+				springAxies  = vec3(0.0,1.0,0.0);
+				scaleFactor = centerY - o[idx].y;
+			}
+			else
+			{
+				stretchedPos = o[idx].xyz + vec3(0.0, yStretch, 0.0);
+				springAxies = vec3(0.0,-1.0,0.0);
+				scaleFactor = o[idx].y - centerY;
+			}
+		
+			float len = distance(b[idx].xyz, stretchedPos);
+	
+			if (len != 0.0) 
+			{
+				stretchForce += springAxies * stretchForceStrength * len * scaleFactor;
+			}
+		}
+	}
+	// --------------------------------------------------------------------
+
 	// Viewing distortion
 	// --------------------------------------------------------------------
 	vec3 viewDistortionForce = vec3(0.0);
-	if (viewDistortion && elephantMode && chainId != selectedAtomId && selectedAtomId != 127)
+	if (viewDistortion && chainId != selectedAtomId && selectedAtomId < maxIdx)
 	{
 		vec4 globalCam = invMV * vec4(0.0,0.0,1.0,1.0);
 		globalCam = globalCam / globalCam.w;
@@ -248,6 +308,7 @@ void doStep(float deltaTime)
 				mouseSpringForce = vec3(0.0);
 				returnSpringForce = vec3(0.0);
 				repulsionForce = vec3(0.0);
+				stretchForce = vec3(0.0);
 			}
 		}
 	}
@@ -261,7 +322,7 @@ void doStep(float deltaTime)
 	else 
 	{
 		vec3 springForce = neighborSpringForce + mouseSpringForce + returnSpringForce;
-		nextPos = b[idx].xyz + (v[idx].xyz - springForce - gravityVariable*vec3(0.0, 1.0, 0.0) + repulsionForce + viewDistortionForce) * deltaTime;
+		nextPos = b[idx].xyz + (v[idx].xyz - springForce - gravityVariable*vec3(0.0, 1.0, 0.0) + repulsionForce + viewDistortionForce - stretchForce) * deltaTime;
 	}
 	if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
 	else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
@@ -285,21 +346,24 @@ void doStep(float deltaTime)
 
 void main() 
 {
-	if (elephantMode)
+	if (mouseAttraction || viewDistortion)
 	{
 		uint atomAttributes;
+		uint selectedColor = mouseAttraction ? 2 : 4;
+		uint restColor = mouseAttraction ? 3 : 5;
 		if (selectedAtomId >= 0 && selectedAtomId < maxIdx && chainId == selectedAtomId)
 		{
-			atomAttributes = elementId | (2 << 8) | (chainId << 16);
+			atomAttributes = elementId | (selectedColor << 8) | (chainId << 16);
 		}
 		else 
 		{
-			atomAttributes = elementId | (3 << 8) | (chainId << 16);
+			atomAttributes = elementId | (restColor << 8) | (chainId << 16);
 		}
 
 		b[idx] = vec4(b[idx].xyz, uintBitsToFloat(atomAttributes));
 		
 	}
+
 
 	if (updateOriginalPos && chainId == selectedAtomId) 
 	{

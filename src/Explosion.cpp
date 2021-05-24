@@ -44,7 +44,6 @@ void Explosion::display()
 			ImGui::SliderFloat("Explosion center x: ", &m_x, m_minBounds.x, m_maxBounds.x);
 			ImGui::SliderFloat("Explosion center y: ", &m_y, m_minBounds.y, m_maxBounds.y);
 			ImGui::SliderFloat("Explosion center z: ", &m_z, m_minBounds.z, m_maxBounds.z);
-			ImGui::SliderFloat("Decay of velocity with time: ", &m_timeDecay, 0.9, 1.1);
 			ImGui::SliderFloat("Explosion speed: ", &m_speed, 1.0, 100.0);
 		}
 		ImGui::Checkbox("Explode: ", &m_explode);
@@ -94,9 +93,4 @@ void Explosion::bindVelocity()
 void Explosion::releaseVelocity()
 {
 	m_velocity->unbind(GL_SHADER_STORAGE_BUFFER);
-}
-
-float Explosion::getTimeDecay()
-{
-	return m_timeDecay;
 }
