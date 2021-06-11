@@ -43,6 +43,10 @@ uniform float xStretch;
 uniform float yStretch;
 uniform float zStretch;
 
+uniform uvec2 stretchingInterval;
+uniform bool stretchingToolActivated;
+uniform int stretchingIntervalLength;
+
 layout (local_size_x = 1) in;
 
 struct Element
@@ -131,12 +135,10 @@ bool checkBounds(float pos, float bound, vec3 normal)
 }
 
 
-void doStep(float deltaTime)
+vec3 compNeighborSpringForce(float springParam)
 {
-	// Spring force between neighbors
-	// --------------------------------------------------------------------
 	vec3 neighborSpringForce = vec3(0.0);
-	if (springForceActive && idx != 0)
+	if (idx != 0)
 	{
 		
 		vec3 springAxies = b[idx].xyz - b[idx-1].xyz;
@@ -145,10 +147,10 @@ void doStep(float deltaTime)
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			neighborSpringForce += springNorm * len * springConst;
+			neighborSpringForce += springNorm * len * springParam;
 		}
 	}
-	if (springForceActive && idx < maxIdx-1)
+	if (idx < maxIdx-1)
 	{
 		vec3 springAxies = b[idx].xyz - b[idx+1].xyz;
 		float len = length(springAxies) - 3;
@@ -156,50 +158,30 @@ void doStep(float deltaTime)
 		if (len != 0.0) 
 		{
 			vec3 springNorm = normalize(springAxies);
-			neighborSpringForce += springNorm * len * springConst;
+			neighborSpringForce += springNorm * len * springParam;
 		}
 	}
-	// --------------------------------------------------------------------
+	return neighborSpringForce;
+}
 
-	// Spring force towards mouse pointer
-	// --------------------------------------------------------------------
-	vec3 mouseSpringForce = vec3(0.0);
-	if (mouseAttraction && chainId == selectedAtomId)
-	{
-		vec4 screenAtom = MVP * vec4(b[idx].xyz,1.0);
-		vec2 screenAtomXY = screenAtom.xy / screenAtom.w;
-		vec3 springAxisScreen = vec3(screenAtomXY - mousePos,0.0);
-
-		vec3 springAxies = (invMVP * vec4(springAxisScreen,0.0)).xyz;
-		
-		float len = length(springAxies);
-	
-		if (len != 0.0) 
-		{
-			vec3 springNorm = normalize(springAxies);
-			mouseSpringForce = springNorm * len * mouseAttractionSpringConst;
-		}
-	}
-	// --------------------------------------------------------------------
-
-	// Spring force to atoms original position
-	// --------------------------------------------------------------------
+vec3 compOriginalPosSpringForce(float springParam, vec3 displacement)
+{
 	vec3 returnSpringForce = vec3(0.0);
-	if (springToOriginalPos)
-	{
-		vec3 springAxies = b[idx].xyz - o[idx].xyz;
-		float len = length(springAxies);
 	
-		if (len != 0.0) 
-		{
-			vec3 springNorm = normalize(springAxies);
-			returnSpringForce = springNorm * len * springToOriginalPosConst;
-		}
+	vec3 springAxies = b[idx].xyz - (o[idx].xyz  + displacement);
+	float len = length(springAxies);
+	
+	if (len != 0.0) 
+	{
+		vec3 springNorm = normalize(springAxies);
+		returnSpringForce = springNorm * len * springParam;
 	}
-	// --------------------------------------------------------------------
+	return returnSpringForce;
 
-	// Repulsion force between neighboring atoms based on grid
-	// --------------------------------------------------------------------
+}
+
+vec3 compRepulsionForce(float repulsionForceParam)
+{
 	vec3 repulsionForce = vec3(0.0);
 
 	float normX = (b[idx].x - xBounds[0]) / (xBounds[1] + 1 - xBounds[0]);
@@ -219,8 +201,57 @@ void doStep(float deltaTime)
 		if (!checkAtomIntersection(cell.atoms[i], rad)) continue;
 
 		vec3 fDir = normalize(b[idx].xyz - cell.atoms[i].xyz);
-		repulsionForce += repulsionStrength * fDir / pow((distance(b[idx].xyz, cell.atoms[i].xyz)),2);
+		repulsionForce += repulsionForceParam * fDir / pow((distance(b[idx].xyz, cell.atoms[i].xyz)),2);
 	}
+
+	return repulsionForce;
+}
+
+vec3 compMouseAttractionForce(float attractionForceParam)
+{
+	vec3 mouseSpringForce = vec3(0.0);
+	
+	vec4 screenAtom = MVP * vec4(b[idx].xyz,1.0);
+	vec2 screenAtomXY = screenAtom.xy / screenAtom.w;
+	vec3 springAxisScreen = vec3(screenAtomXY - mousePos,0.0);
+
+	vec3 springAxies = (invMVP * vec4(springAxisScreen,0.0)).xyz;
+		
+	float len = length(springAxies);
+	
+	if (len != 0.0) 
+	{
+		vec3 springNorm = normalize(springAxies);
+		mouseSpringForce = springNorm * len * attractionForceParam;
+	}
+	
+	return mouseSpringForce;
+}
+
+void doStep(float deltaTime)
+{
+	// Spring force between neighbors
+	// --------------------------------------------------------------------
+	vec3 neighborSpringForce = vec3(0.0);
+	if (springForceActive) neighborSpringForce = compNeighborSpringForce(springConst);
+	// --------------------------------------------------------------------
+
+	// Spring force towards mouse pointer
+	// --------------------------------------------------------------------
+	vec3 mouseSpringForce = vec3(0.0);
+	if (mouseAttraction && chainId == selectedAtomId) mouseSpringForce = compMouseAttractionForce(mouseAttractionSpringConst);
+	// --------------------------------------------------------------------
+
+	// Spring force to atoms original position
+	// --------------------------------------------------------------------
+	vec3 returnSpringForce = vec3(0.0);
+	if (springToOriginalPos) returnSpringForce = compOriginalPosSpringForce(springToOriginalPosConst, vec3(0.0));
+	// --------------------------------------------------------------------
+
+	// Repulsion force between neighboring atoms based on grid
+	// --------------------------------------------------------------------
+	vec3 repulsionForce = vec3(0.0);
+	if (repulsionStrength != 0.0) repulsionForce = compRepulsionForce(repulsionStrength);
 	// --------------------------------------------------------------------
 
 	// Stretching
@@ -359,9 +390,6 @@ void doStep(float deltaTime)
 	else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
 
 
-	//uint atomAttributes = elementId | (residueId << 8) | (chainId << 16);
-
-	//a[idx] = vec4(nextPos, uintBitsToFloat(atomAttributes));
 	a[idx] = vec4(nextPos, b[idx].w);
 
 	if (fracTimePassed >= 1) 
@@ -371,45 +399,9 @@ void doStep(float deltaTime)
 	}
 }
 
-void main() 
+
+void computeNeighborhoodGrid()
 {
-	if (mouseAttraction || viewDistortion)
-	{
-		uint atomAttributes;
-		uint selectedColor = mouseAttraction ? 2 : 4;
-		uint restColor = mouseAttraction ? 3 : 5;
-		if (selectedAtomId >= 0 && selectedAtomId < maxIdx && chainId == selectedAtomId)
-		{
-			atomAttributes = elementId | (selectedColor << 8) | (chainId << 16);
-		}
-		else 
-		{
-			atomAttributes = elementId | (restColor << 8) | (chainId << 16);
-		}
-
-		b[idx] = vec4(b[idx].xyz, uintBitsToFloat(atomAttributes));
-		
-	}
-
-
-	if (updateOriginalPos && chainId == selectedAtomId) 
-	{
-		o[idx] = b[idx];
-	}
-
-
-	float tempT = timeStep;
-	while (tempT > 1) 
-	{
-		doStep(1.0);
-		tempT -= 1.0;
-	}
-	
-	doStep(tempT);
-	
-	
-	if (repulsionStrength == 0.0) return; 
-
 	float radius = elements[elementId].radius;
 	int[27] alreadyVisited;
 	int alreadyVisitedIdx = 0;
@@ -455,6 +447,115 @@ void main()
 				}
 			}
 		}
+	}
+}
+
+
+void main() 
+{
+	// STRETCHING TOOL MODE
+	if (stretchingToolActivated)
+	{
+		vec3 repulsionForce = compRepulsionForce(0.01);
+		vec3 mouseSpringForce = vec3(0.0);
+		if (chainId == selectedAtomId) mouseSpringForce = compMouseAttractionForce(0.1);
+		vec3 neighborSpringForce;
+		
+		uint atomAttributes;
+		if (idx >= stretchingInterval.x && idx < stretchingInterval.y)
+		{
+			atomAttributes = elementId | (1 << 8) | (chainId << 16);
+
+			b[idx] = vec4(b[idx].xyz, uintBitsToFloat(atomAttributes));
+
+			neighborSpringForce = compNeighborSpringForce(0.05);
+			vec3 nextPos = b[idx].xyz + (v[idx].xyz - neighborSpringForce - mouseSpringForce + repulsionForce);
+	
+			if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
+			else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
+			else if (checkBounds(nextPos.y, yBounds.x, vec3(0.0,1.0,0.0))) nextPos.y = yBounds.x;
+			else if (checkBounds(-nextPos.y, -yBounds.y, vec3(0.0,-1.0,0.0))) nextPos.y = yBounds.y;
+			else if (checkBounds(nextPos.z, zBounds.x, vec3(0.0,0.0,1.0))) nextPos.z = zBounds.x;
+			else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
+
+			a[idx] = vec4(nextPos, b[idx].w);
+			v[idx] = v[idx]*timeDecay - vec4(neighborSpringForce,0.0) - vec4(mouseSpringForce, 0.0) + vec4(repulsionForce, 0.0);
+		}
+
+		else
+		{
+			atomAttributes = elementId | (2 << 8) | (chainId << 16);
+			neighborSpringForce = compNeighborSpringForce(0.01);
+			vec3 nextPos;
+			vec3 originalPosSpringForce;
+			if (idx < stretchingInterval.x)
+			{
+				originalPosSpringForce = compOriginalPosSpringForce(0.002, vec3(-1.6*(stretchingIntervalLength), 0.0, 0.0));
+				nextPos = b[idx].xyz + (v[idx].xyz + originalPosSpringForce + repulsionForce - neighborSpringForce - mouseSpringForce);
+			}
+			else 
+			{
+				originalPosSpringForce = compOriginalPosSpringForce(0.002, vec3(1.6*(stretchingIntervalLength), 0.0, 0.0));
+				nextPos = b[idx].xyz + (v[idx].xyz + originalPosSpringForce + repulsionForce - neighborSpringForce - mouseSpringForce);
+			}
+
+			if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
+			else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
+			else if (checkBounds(nextPos.y, yBounds.x, vec3(0.0,1.0,0.0))) nextPos.y = yBounds.x;
+			else if (checkBounds(-nextPos.y, -yBounds.y, vec3(0.0,-1.0,0.0))) nextPos.y = yBounds.y;
+			else if (checkBounds(nextPos.z, zBounds.x, vec3(0.0,0.0,1.0))) nextPos.z = zBounds.x;
+			else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
+			
+			a[idx] = vec4(nextPos, b[idx].w);
+			v[idx] = v[idx]*timeDecay - vec4(originalPosSpringForce, 0.0) + vec4(repulsionForce, 0.0) - vec4(neighborSpringForce,0.0) - vec4(mouseSpringForce, 0.0);
+		}
+
+		a[idx] = vec4(a[idx].xyz, uintBitsToFloat(atomAttributes));
+
+		computeNeighborhoodGrid();
+		return;
+	}
+
+	// -----------------------------------------------------------------------------------------------------------------
+	// DUMMY ANIMATION MODE
+	else
+	{
+		// For coloring the selected atom when using mouse attraction or view distortion tools.
+		if (mouseAttraction || viewDistortion)
+		{
+			uint atomAttributes;
+			uint selectedColor = mouseAttraction ? 2 : 4;
+			uint restColor = mouseAttraction ? 3 : 5;
+			if (selectedAtomId >= 0 && selectedAtomId < maxIdx && chainId == selectedAtomId)
+			{
+				atomAttributes = elementId | (selectedColor << 8) | (chainId << 16);
+			}
+			else 
+			{
+				atomAttributes = elementId | (restColor << 8) | (chainId << 16);
+			}
+
+			b[idx] = vec4(b[idx].xyz, uintBitsToFloat(atomAttributes));
+		
+		}
+
+		if (updateOriginalPos && chainId == selectedAtomId) 
+		{
+			o[idx] = b[idx];
+		}
+
+
+		float tempT = timeStep;
+		while (tempT > 1) 
+		{
+			doStep(1.0);
+			tempT -= 1.0;
+		}
+	
+		doStep(tempT);
+	
+	
+		if (repulsionStrength != 0.0) computeNeighborhoodGrid(); 
 	}
 	
 	

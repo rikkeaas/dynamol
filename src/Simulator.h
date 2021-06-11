@@ -103,5 +103,9 @@ namespace dynamol
 		float m_xStretch = 0.0;
 		float m_yStretch = 0.0;
 		float m_zStretch = 0.0;
+
+		bool stretchingTool = false;
+		int stretchingIntervalLength = 10;
+		int stretchingIntervalStartIdx = 0;
 	};
 }

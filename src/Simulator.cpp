@@ -55,6 +55,9 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 			{ GL_COMPUTE_SHADER,"./res/simulator/simulator-cs.glsl" }
 		});
 
+	createShaderProgram("tool", { 
+			{GL_COMPUTE_SHADER, "./res/simulator/tool-cs.glsl" } 
+		});
 
 	m_emptyNeighborhoodList.resize(m_gridResolution * m_gridResolution * m_gridResolution);
 
@@ -125,71 +128,90 @@ void Simulator::simulate()
 
 void Simulator::doStep()
 {
+	if (ImGui::Begin("Tool"))
+	{
+		// Slider to slide interval
+		// Slider for size of interval
+
+		ImGui::EndMenu();
+	}
+
 	if (ImGui::Begin("Simulator"))
 	{
-		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
-
-		ImGui::SliderInt("Grid resolution", &m_gridResolution, 1, 20);
-		ImGui::SliderFloat("Repulsion force strength", &m_repulsionForce, 0.0, 2.0);
-		ImGui::SliderFloat("Simulation speed", &m_speedMultiplier, 0.0f, 200.0f);
-		ImGui::SliderFloat("Decay of velocity with time: ", &m_timeDecay, 0.9, 1.1);
-		ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100, 450.0);
-		ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
-		ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
-
-		ImGui::Checkbox("Mouse interaction: ", &m_mouseAttraction);
-		if (m_mouseAttraction)
-			ImGui::SliderFloat("Mouse attraction spring contant: ", &m_mouseSpringConst, 0.0, 1.0);
-		
-		ImGui::Checkbox("Spring force to original positions: ", &m_originalPosSpringForce);
-		if (m_originalPosSpringForce)
-			ImGui::SliderFloat("Original position spring constant: ", &m_returnSpringConst, 0.0, 1.0);
-		
-		ImGui::Checkbox("Spring force: ", &m_springActivated);
-		if (m_springActivated)
-			ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
-
-		ImGui::Checkbox("View distortion: ", &m_viewDistortion);
-		if (m_viewDistortion)
+		ImGui::Checkbox("Stretching tool", &stretchingTool);
+		if (stretchingTool)
 		{
-			ImGui::SliderFloat("View Distortion Strength: ", &m_viewDistortionStrength, 0.0, 3.0);
-			ImGui::SliderFloat("Distortion Distance Cut Off: ", &m_distortionDistCutOff, 0.0, 15.0);
-			if (ImGui::Button("Remove selection"))
-			{
-				selectedAtomId = m_vertexCount;
-			}
+			dummyAnimation = false;
+			ImGui::SliderInt("Stretching interval length: ", &stretchingIntervalLength, 1, 30);
+			ImGui::SliderInt("Stretching interval start index: ", &stretchingIntervalStartIdx, 0, m_vertexCount - stretchingIntervalLength);
 		}
 
-		ImGui::Checkbox("Gravity: ", &m_gravityActivated);
-		if (m_gravityActivated)
-			ImGui::SliderFloat("Gravity multiplier: ", &m_gravity, 0.0, 5.0);
-		else
-			m_gravity = 0.0;
-
-		ImGui::SliderFloat("Strength of stretch force", &m_stretchStrength, 0.0, 2.0);
-		ImGui::SliderFloat("Stretch along x-axis", &m_xStretch, 0.0, 100.0);
-		ImGui::SliderFloat("Stretch along y-axis", &m_yStretch, 0.0, 100.0);
-		ImGui::SliderFloat("Stretch along z-axis", &m_zStretch, 0.0, 100.0);
-
-		if (ImGui::Button("Reset atom positions"))
+		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
+		if (dummyAnimation)
 		{
-			auto timesteps = m_viewer->scene()->protein()->atoms();
-			for (int i = 0; i < m_vertices.size(); i++)
+			stretchingTool = false;
+			ImGui::SliderInt("Grid resolution", &m_gridResolution, 1, 20);
+			ImGui::SliderFloat("Repulsion force strength", &m_repulsionForce, 0.0, 2.0);
+			ImGui::SliderFloat("Simulation speed", &m_speedMultiplier, 0.0f, 200.0f);
+			ImGui::SliderFloat("Decay of velocity with time: ", &m_timeDecay, 0.5, 1.1);
+			ImGui::DragFloatRange2("X bounds: ", &m_xbounds.x, &m_xbounds.y, 1.0, -100, 450.0);
+			ImGui::DragFloatRange2("Y bounds: ", &m_ybounds.x, &m_ybounds.y, 1.0, -100.0, 450.0);
+			ImGui::DragFloatRange2("Z bounds: ", &m_zbounds.x, &m_zbounds.y, 1.0, -100.0, 450.0);
+
+			ImGui::Checkbox("Mouse interaction: ", &m_mouseAttraction);
+			if (m_mouseAttraction)
+				ImGui::SliderFloat("Mouse attraction spring contant: ", &m_mouseSpringConst, 0.0, 1.0);
+
+			ImGui::Checkbox("Spring force to original positions: ", &m_originalPosSpringForce);
+			if (m_originalPosSpringForce)
+				ImGui::SliderFloat("Original position spring constant: ", &m_returnSpringConst, 0.0, 1.0);
+
+			ImGui::Checkbox("Spring force: ", &m_springActivated);
+			if (m_springActivated)
+				ImGui::SliderFloat("Spring constant: ", &m_springConst, 0.0, 1.0);
+
+			ImGui::Checkbox("View distortion: ", &m_viewDistortion);
+			if (m_viewDistortion)
 			{
-				m_vertices[i]->setData(timesteps[0], GL_STREAM_DRAW);
+				ImGui::SliderFloat("View Distortion Strength: ", &m_viewDistortionStrength, 0.0, 3.0);
+				ImGui::SliderFloat("Distortion Distance Cut Off: ", &m_distortionDistCutOff, 0.0, 15.0);
+				if (ImGui::Button("Remove selection"))
+				{
+					selectedAtomId = m_vertexCount;
+				}
 			}
-			m_originalPos->setData(timesteps[0], GL_STATIC_DRAW);
+
+			ImGui::Checkbox("Gravity: ", &m_gravityActivated);
+			if (m_gravityActivated)
+				ImGui::SliderFloat("Gravity multiplier: ", &m_gravity, 0.0, 5.0);
+			else
+				m_gravity = 0.0;
+
+			ImGui::SliderFloat("Strength of stretch force", &m_stretchStrength, 0.0, 2.0);
+			ImGui::SliderFloat("Stretch along x-axis", &m_xStretch, 0.0, 100.0);
+			ImGui::SliderFloat("Stretch along y-axis", &m_yStretch, 0.0, 100.0);
+			ImGui::SliderFloat("Stretch along z-axis", &m_zStretch, 0.0, 100.0);
+
+			if (ImGui::Button("Reset atom positions"))
+			{
+				auto timesteps = m_viewer->scene()->protein()->atoms();
+				for (int i = 0; i < m_vertices.size(); i++)
+				{
+					m_vertices[i]->setData(timesteps[0], GL_STREAM_DRAW);
+				}
+				m_originalPos->setData(timesteps[0], GL_STATIC_DRAW);
+			}
 		}
 
 		ImGui::EndMenu();
 	}
 	m_explosion->display();
 
-	if (dummyAnimation)
+	if (dummyAnimation || stretchingTool)
 	{
 		vec2 mousePos = vec2(0.0);
 
-		if (m_mouseAttraction || m_viewDistortion)
+		if (m_mouseAttraction || m_viewDistortion || stretchingTool)
 		{	
 			glfwGetCursorPos(m_viewer->window(), &mouseX, &mouseY);
 			mousePos = vec2(2.0f * float(mouseX) / float(m_viewer->viewportSize().x) - 1.0f, -2.0f * float(mouseY) / float(m_viewer->viewportSize().y) + 1.0f);
@@ -294,6 +316,10 @@ void Simulator::doStep()
 		simulateProgram->setUniform("xStretch", m_xStretch);
 		simulateProgram->setUniform("yStretch", m_yStretch);
 		simulateProgram->setUniform("zStretch", m_zStretch);
+
+		simulateProgram->setUniform("stretchingInterval", uvec2(stretchingIntervalStartIdx, stretchingIntervalStartIdx + stretchingIntervalLength));
+		simulateProgram->setUniform("stretchingIntervalLength", stretchingIntervalLength);
+		simulateProgram->setUniform("stretchingToolActivated", stretchingTool);
 
 		simulateProgram->dispatchCompute(m_vertexCount, 1, 1);
 		simulateProgram->release();
