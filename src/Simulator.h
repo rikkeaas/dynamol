@@ -28,7 +28,6 @@ namespace dynamol
 
 		void debug();
 		virtual void display();
-		
 
 	private:
 		bool m_selectingFocus = false;
@@ -91,7 +90,7 @@ namespace dynamol
 		std::unique_ptr<globjects::Buffer> m_shouldUseZ;
 
 		std::unique_ptr<globjects::VertexArray> m_vao = std::make_unique<globjects::VertexArray>();
-		float m_vertexCount;
+		int m_vertexCount;
 
 		float m_timeStep;
 
@@ -107,5 +106,7 @@ namespace dynamol
 		bool stretchingTool = false;
 		int stretchingIntervalLength = 10;
 		int stretchingIntervalStartIdx = 0;
+
+		float m_previousMouseWheel = 0.0;
 	};
 }

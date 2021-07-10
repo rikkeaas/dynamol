@@ -46,6 +46,9 @@ namespace dynamol
 
 		void saveImage(const std::string & filename);
 
+		static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+		float mouseWheel = 0.0;
+
 	private:
 
 		void beginFrame();
@@ -57,7 +60,6 @@ namespace dynamol
 		static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 		static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 		static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
-		static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
 		GLFWwindow* m_window;
 		Scene *m_scene;
@@ -73,6 +75,8 @@ namespace dynamol
 
 		bool m_showUi = true;
 		bool m_saveScreenshot = false;
+
+
 	};
 
 

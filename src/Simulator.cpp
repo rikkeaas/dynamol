@@ -66,6 +66,10 @@ Simulator::Simulator(Viewer* viewer) : Renderer(viewer)
 
 	m_grids.push_back(Buffer::create());
 	m_grids.back()->setData(m_emptyNeighborhoodList, GL_STREAM_DRAW);
+
+	glfwSetScrollCallback(m_viewer->window(), m_viewer->scrollCallback);
+
+
 	//m_gridBuffer->setData(m_neighborhoodList, GL_STREAM_DRAW);
 
 	/*
@@ -126,16 +130,10 @@ void Simulator::simulate()
 	currentState->apply();
 }
 
+
+
 void Simulator::doStep()
 {
-	if (ImGui::Begin("Tool"))
-	{
-		// Slider to slide interval
-		// Slider for size of interval
-
-		ImGui::EndMenu();
-	}
-
 	if (ImGui::Begin("Simulator"))
 	{
 		ImGui::Checkbox("Stretching tool", &stretchingTool);
@@ -144,6 +142,7 @@ void Simulator::doStep()
 			dummyAnimation = false;
 			ImGui::SliderInt("Stretching interval length: ", &stretchingIntervalLength, 1, 30);
 			ImGui::SliderInt("Stretching interval start index: ", &stretchingIntervalStartIdx, 0, m_vertexCount - stretchingIntervalLength);
+			ImGui::Checkbox("Mouse interaction: ", &m_mouseAttraction);
 		}
 
 		ImGui::Checkbox("Dummy simulation", &dummyAnimation);
@@ -206,6 +205,22 @@ void Simulator::doStep()
 		ImGui::EndMenu();
 	}
 	m_explosion->display();
+	
+
+	if (abs(m_viewer->mouseWheel - m_previousMouseWheel) > 2)
+	{
+		if (m_viewer->mouseWheel > m_previousMouseWheel)
+		{
+			stretchingIntervalLength -= 1;
+		}
+		else
+		{
+			stretchingIntervalLength += 1;
+		}
+		stretchingIntervalLength = max(min(30, stretchingIntervalLength), 1);
+		m_previousMouseWheel = m_viewer->mouseWheel;
+	}
+
 
 	if (dummyAnimation || stretchingTool)
 	{
@@ -221,6 +236,8 @@ void Simulator::doStep()
 				m_mousePress = true;
 			}
 
+			
+
 			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && !m_viewDistortion && m_mousePress)
 			{
 				vec4 data;
@@ -230,7 +247,15 @@ void Simulator::doStep()
 				uint elementId = bitfieldExtract(id, 0, 8);
 				uint residueId = bitfieldExtract(id, 8, 8);
 				uint newSelectedAtomId = bitfieldExtract(id, 16, 8);
-				selectedAtomId = newSelectedAtomId == selectedAtomId ? m_vertexCount : newSelectedAtomId;
+
+				if (!m_mouseAttraction && stretchingTool && newSelectedAtomId < m_vertexCount)
+				{
+					stretchingIntervalStartIdx = max(0, int(newSelectedAtomId - (0.5 * stretchingIntervalLength)));
+				}
+				else
+				{
+					selectedAtomId = newSelectedAtomId == selectedAtomId ? m_vertexCount : newSelectedAtomId;
+				}
 				m_mousePress = false;
 			}
 			else if (glfwGetMouseButton(m_viewer->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE && m_viewDistortion && m_mousePress && selectedAtomId >= m_vertexCount)

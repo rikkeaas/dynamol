@@ -300,27 +300,6 @@ void Viewer::cursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 	}
 }
 
-void Viewer::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
-{
-	Viewer* viewer = static_cast<Viewer*>(glfwGetWindowUserPointer(window));
-
-	if (viewer)
-	{
-		if (viewer->m_showUi)
-		{
-			ImGuiIO& io = ImGui::GetIO();
-
-			if (io.WantCaptureMouse)
-				return;
-		}
-
-		for (auto& i : viewer->m_interactors)
-		{
-			i->scrollEvent(xoffset, yoffset);
-		}
-	}
-}
-
 void Viewer::beginFrame()
 {
 	ImGui_ImplOpenGL3_NewFrame();
@@ -444,3 +423,44 @@ void Viewer::mainMenu()
 		ImGui::EndMenu();
 	}
 }
+
+void Viewer::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	Viewer* viewer = static_cast<Viewer*>(glfwGetWindowUserPointer(window));
+
+	if (viewer)
+	{
+		if (viewer->m_showUi)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+
+			if (io.WantCaptureMouse)
+				return;
+		}
+
+		viewer->mouseWheel += (float)yoffset;
+
+	}
+}
+
+/*
+void Viewer::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	Viewer* viewer = static_cast<Viewer*>(glfwGetWindowUserPointer(window));
+
+	if (viewer)
+	{
+		if (viewer->m_showUi)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+
+			if (io.WantCaptureMouse)
+				return;
+		}
+
+		for (auto& i : viewer->m_interactors)
+		{
+			i->scrollEvent(xoffset, yoffset);
+		}
+	}
+}*/

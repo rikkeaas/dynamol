@@ -499,12 +499,12 @@ void main()
 				nextPos = b[idx].xyz + (v[idx].xyz + originalPosSpringForce + repulsionForce - neighborSpringForce - mouseSpringForce);
 			}
 
-			if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
-			else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
-			else if (checkBounds(nextPos.y, yBounds.x, vec3(0.0,1.0,0.0))) nextPos.y = yBounds.x;
-			else if (checkBounds(-nextPos.y, -yBounds.y, vec3(0.0,-1.0,0.0))) nextPos.y = yBounds.y;
-			else if (checkBounds(nextPos.z, zBounds.x, vec3(0.0,0.0,1.0))) nextPos.z = zBounds.x;
-			else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
+			//if (checkBounds(nextPos.x, xBounds.x, vec3(1.0,0.0,0.0))) nextPos.x = xBounds.x;
+			//else if (checkBounds(-nextPos.x, -xBounds.y, vec3(-1.0,0.0,0.0))) nextPos.x = xBounds.y;
+			//else if (checkBounds(nextPos.y, yBounds.x, vec3(0.0,1.0,0.0))) nextPos.y = yBounds.x;
+			//else if (checkBounds(-nextPos.y, -yBounds.y, vec3(0.0,-1.0,0.0))) nextPos.y = yBounds.y;
+			//else if (checkBounds(nextPos.z, zBounds.x, vec3(0.0,0.0,1.0))) nextPos.z = zBounds.x;
+			//else if (checkBounds(-nextPos.z, -zBounds.y, vec3(0.0,0.0,-1.0))) nextPos.z = zBounds.y;
 			
 			a[idx] = vec4(nextPos, b[idx].w);
 			v[idx] = v[idx]*timeDecay - vec4(originalPosSpringForce, 0.0) + vec4(repulsionForce, 0.0) - vec4(neighborSpringForce,0.0) - vec4(mouseSpringForce, 0.0);
@@ -530,7 +530,7 @@ void main()
 			{
 				atomAttributes = elementId | (selectedColor << 8) | (chainId << 16);
 			}
-			else 
+			else
 			{
 				atomAttributes = elementId | (restColor << 8) | (chainId << 16);
 			}
